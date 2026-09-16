@@ -74,7 +74,7 @@
     <header>
         <div class="header-title">
             <h1>سامانه پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس</h1>
-            <p>پوشش کامل مساحتی استان | شبکه ۱۵ کیلومتری | داده‌های پیش‌بینی فردا (Open-Meteo)</p>
+            <p>پوشش کامل مساحتی استان | برش‌خورده با مرز ۳۷ شهرستان | داده‌های پیش‌بینی فردا (Open-Meteo)</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -82,7 +82,7 @@
     </header>
 
     <div style="position: relative; flex: 1;">
-        <div id="loading-progress">در حال دریافت داده‌های هواشناسی و پردازش شبکه استان فارس...</div>
+        <div id="loading-progress">در حال دریافت مرز استان و داده‌های هواشناسی...</div>
         <div id="map"></div>
         <div class="legend">
             <b>سطوح خطر FWI (پهنه‌ای)</b><br>
@@ -95,24 +95,20 @@
     </div>
 
     <script>
-        // ۱. تنظیم تاریخ فردا
+        // ۱. تاریخ فردا
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. راه‌اندازی نقشه روی استان فارس
-        const map = L.map('map').setView([29.3, 53.2], 7);
-
-        // نقشه پایه تیره Carto (سریع و هماهنگ با تم)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        // ۲. نقشه پایه OpenStreetMap (رایگان و بدون نیاز به API Key)
+        const map = L.map('map').setView([29.3, 53.6], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
-            subdomains: 'abcd',
-            attribution: '&copy; OpenStreetMap &copy; CARTO'
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // ۳. رنگ‌بندی FWI
         function getColor(fwi) {
             if (fwi < 5)  return '#22c55e';
             if (fwi < 15) return '#eab308';
@@ -121,14 +117,47 @@
             return '#7f1d1d';
         }
 
-        // ۴. ساخت شبکه سلولی (گام 0.22 درجه ≈ ۲۲ کیلومتر)
+        // ۳. شکل‌ها و ابزار هندسی
+        const turfPolygons = []; // آرایه‌ای از پلی‌گون‌های شهرستان‌های فارس
         const step = 0.22;
-        const minLat = 27.2, maxLat = 31.5;
-        const minLon = 50.6, maxLon = 55.4;
 
+        // تابع بررسی اینکه یک نقطه داخل مرز استان فارس است یا نه (الگوریتم Ray Casting)
+        function pointInRing(lat, lon, ring) {
+            let inside = false;
+            for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                const xi = ring[i][0], yi = ring[i][1];
+                const xj = ring[j][0], yj = ring[j][1];
+                if (((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function pointInPolygon(lat, lon, polygon) {
+            // پشتیبانی از Polygon و MultiPolygon
+            if (polygon.type === 'Polygon') {
+                return pointInRing(lat, lon, polygon.coordinates[0]);
+            }
+            if (polygon.type === 'MultiPolygon') {
+                for (const p of polygon.coordinates) {
+                    if (pointInRing(lat, lon, p[0])) return true;
+                }
+            }
+            return false;
+        }
+
+        function isInsideFars(lat, lon) {
+            for (const poly of turfPolygons) {
+                if (pointInPolygon(lat, lon, poly)) return true;
+            }
+            return false;
+        }
+
+        // ۴. ساخت شبکه سلولی
         const gridCells = [];
-        for (let lat = minLat; lat <= maxLat; lat += step) {
-            for (let lon = minLon; lon <= maxLon; lon += step) {
+        for (let lat = 27.2; lat <= 31.5; lat += step) {
+            for (let lon = 50.6; lon <= 55.4; lon += step) {
                 gridCells.push({
                     latCenter: parseFloat((lat + step / 2).toFixed(4)),
                     lonCenter: parseFloat((lon + step / 2).toFixed(4)),
@@ -137,15 +166,39 @@
             }
         }
 
-        // ۵. دریافت دسته‌ای داده‌ها (هر درخواست = ۴۵ نقطه)
-        async function loadGridFWI() {
+        // ۵. بارگذاری مرز استان و سپس رسم شبکه برش‌خورده
+        async function init() {
             const progressEl = document.getElementById('loading-progress');
-            const batchSize = 45;
-            let errorCount = 0;
 
+            // --- بارگذاری مرز ۳۷ شهرستان فارس ---
+            let farsData;
             try {
-                for (let i = 0; i < gridCells.length; i += batchSize) {
-                    const batch = gridCells.slice(i, i + batchSize);
+                const res = await fetch('fars_districts.geojson');
+                farsData = await res.json();
+                for (const f of farsData.features) {
+                    turfPolygons.push(f.geometry);
+                }
+                // نمایش مرز استان با خط سفید ظریف
+                L.geoJSON(farsData, {
+                    style: { color: '#e2e8f0', weight: 1.2, fill: false }
+                }).addTo(map);
+            } catch (e) {
+                console.error('خطا در خواندن فایل مرزها:', e);
+                progressEl.innerText = '⚠️ فایل fars_districts.geojson یافت نشد — لطفاً آن را در مخزن آپلود کنید';
+                progressEl.style.borderColor = '#eab308';
+                progressEl.style.color = '#eab308';
+            }
+
+            // فیلتر سلول‌ها: فقط سلول‌های داخل مرز استان فارس
+            const farsCells = gridCells.filter(function (c) {
+                return isInsideFars(c.latCenter, c.lonCenter);
+            });
+
+            // --- دریافت دسته‌ای داده‌های هواشناسی ---
+            const batchSize = 45;
+            try {
+                for (let i = 0; i < farsCells.length; i += batchSize) {
+                    const batch = farsCells.slice(i, i + batchSize);
                     const lats = batch.map(function (c) { return c.latCenter; }).join(',');
                     const lons = batch.map(function (c) { return c.lonCenter; }).join(',');
 
@@ -162,30 +215,28 @@
 
                     dataArray.forEach(function (data, idx) {
                         const cell = batch[idx];
-                        if (!cell || !data.daily) { errorCount++; return; }
+                        if (!cell || !data.daily) return;
 
                         const temp = data.daily.temperature_2m_max[1];
                         const rh   = data.daily.relative_humidity_2m_mean[1];
                         const wind = data.daily.wind_speed_10m_max[1];
                         const rain = data.daily.precipitation_sum[1];
-
-                        if (temp == null || rh == null || wind == null) { errorCount++; return; }
+                        if (temp == null || rh == null || wind == null) return;
 
                         let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - ((rain || 0) * 2);
                         if (fwi < 0) fwi = 0;
 
                         const color = getColor(fwi);
-
                         const rect = L.rectangle(cell.bounds, {
                             color: color,
                             weight: 0.6,
                             fillColor: color,
-                            fillOpacity: 0.52
+                            fillOpacity: 0.5
                         }).addTo(map);
 
                         rect.bindPopup(
                             '<div style="padding:4px; text-align:right;">' +
-                            '<h4 style="color:#38bdf8;">سلول شبکه: ' + cell.latCenter + ', ' + cell.lonCenter + '</h4>' +
+                            '<h4 style="color:#38bdf8;">موقعیت: ' + cell.latCenter + ', ' + cell.lonCenter + '</h4>' +
                             '<p style="margin-top:6px; font-size:0.95rem;">🔥 <b>شاخص FWI فردا: ' + fwi.toFixed(1) + '</b></p>' +
                             '<hr style="border-color:#334155; margin:6px 0;">' +
                             '<p style="font-size:0.8rem;">🌡️ حداکثر دما: ' + temp + ' °C</p>' +
@@ -196,20 +247,19 @@
                         );
                     });
 
-                    progressEl.innerText = 'در حال بارگذاری شبکه استان: ' +
-                        Math.min(100, Math.round(((i + batchSize) / gridCells.length) * 100)) + '%';
+                    progressEl.innerText = 'در حال بارگذاری: ' +
+                        Math.min(100, Math.round(((i + batchSize) / farsCells.length) * 100)) + '%';
                 }
-
                 progressEl.style.display = 'none';
             } catch (err) {
-                console.error('خطا در بارگذاری:', err);
-                progressEl.innerText = '❌ خطا در ارتباط با سرور هواشناسی — صفحه را رفرش کنید';
+                console.error('خطا:', err);
+                progressEl.innerText = '❌ خطا در ارتباط با سرور هواشناسی — رفرش کنید';
                 progressEl.style.borderColor = '#ef4444';
                 progressEl.style.color = '#ef4444';
             }
         }
 
-        loadGridFWI();
+        init();
     </script>
 </body>
 </html>
