@@ -4,51 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>پهنه‌بندی شاخص FWI استان فارس (فردا)</title>
-    
-    <!-- کتابخانه نقشه Leaflet -->
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- فونت وزیر متن -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
 
     <style>
         * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
         body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        header { 
-            background: #1e293b; 
-            padding: 12px 20px; 
-            border-bottom: 1px solid #334155; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            z-index: 1000; 
+
+        header {
+            background: #1e293b;
+            padding: 12px 20px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
         }
         .header-title h1 { font-size: 1.1rem; color: #f97316; }
         .header-title p { font-size: 0.75rem; color: #94a3b8; }
-        
-        .badge { 
-            background: #ef4444; 
-            color: white; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-weight: bold; 
+
+        .badge {
+            background: #ef4444;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
             font-size: 0.85rem;
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
 
         #map { flex: 1; height: 100%; background: #0f172a; }
 
-        .legend { 
-            position: absolute; 
-            bottom: 20px; 
-            right: 20px; 
-            background: rgba(15,23,42,0.95); 
-            padding: 12px; 
-            border-radius: 8px; 
-            z-index: 999; 
-            font-size: 0.8rem; 
-            border: 1px solid #334155; 
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15,23,42,0.95);
+            padding: 12px;
+            border-radius: 8px;
+            z-index: 999;
+            font-size: 0.8rem;
+            border: 1px solid #334155;
             color: #fff;
         }
         .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-left: 6px; }
@@ -104,24 +102,27 @@
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. راه‌اندازی نقشه مرکزشده روی استان فارس
+        // ۲. راه‌اندازی نقشه روی استان فارس
         const map = L.map('map').setView([29.3, 53.2], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+        // نقشه پایه تیره Carto (سریع و هماهنگ با تم)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 18,
-            attribution: '&copy; OpenStreetMap'
+            subdomains: 'abcd',
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(map);
 
-        // رنگ‌بندی بر اساس FWI
+        // ۳. رنگ‌بندی FWI
         function getColor(fwi) {
-            if (fwi < 5) return '#22c55e';
+            if (fwi < 5)  return '#22c55e';
             if (fwi < 15) return '#eab308';
             if (fwi < 25) return '#f97316';
             if (fwi < 35) return '#ef4444';
             return '#7f1d1d';
         }
 
-        // ۳. ساخت شبکه سلولی
-        const step = 0.22; // وضوح شبکه بهینه برای جلوگیری از سنگین شدن مرورگر
+        // ۴. ساخت شبکه سلولی (گام 0.22 درجه ≈ ۲۲ کیلومتر)
+        const step = 0.22;
         const minLat = 27.2, maxLat = 31.5;
         const minLon = 50.6, maxLon = 55.4;
 
@@ -131,44 +132,46 @@
                 gridCells.push({
                     latCenter: parseFloat((lat + step / 2).toFixed(4)),
                     lonCenter: parseFloat((lon + step / 2).toFixed(4)),
-                    bounds: [
-                        [lat, lon],
-                        [lat + step, lon + step]
-                    ]
+                    bounds: [[lat, lon], [lat + step, lon + step]]
                 });
             }
         }
 
-        // ۴. دریافت هوشمند داده‌ها با ارسال چندتایی (Multi-Point Batch)
+        // ۵. دریافت دسته‌ای داده‌ها (هر درخواست = ۴۵ نقطه)
         async function loadGridFWI() {
             const progressEl = document.getElementById('loading-progress');
-            const batchSize = 45; // ارسال ۴۵ نقطه در هر درخواست (مطابق استاندارد Open-Meteo)
-            
+            const batchSize = 45;
+            let errorCount = 0;
+
             try {
                 for (let i = 0; i < gridCells.length; i += batchSize) {
                     const batch = gridCells.slice(i, i + batchSize);
-                    const lats = batch.map(c => c.latCenter).join(',');
-                    const lons = batch.map(c => c.lonCenter).join(',');
+                    const lats = batch.map(function (c) { return c.latCenter; }).join(',');
+                    const lons = batch.map(function (c) { return c.lonCenter; }).join(',');
 
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-                    
+                    const url = 'https://api.open-meteo.com/v1/forecast'
+                        + '?latitude=' + lats
+                        + '&longitude=' + lons
+                        + '&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum'
+                        + '&timezone=Asia%2FTehran&forecast_days=2';
+
                     const res = await fetch(url);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
                     const rawData = await res.json();
-                    
-                    // اگر چند نقطه باشد، خروجی آرایه‌ای از آبجکت‌هاست
                     const dataArray = Array.isArray(rawData) ? rawData : [rawData];
 
-                    dataArray.forEach((data, idx) => {
+                    dataArray.forEach(function (data, idx) {
                         const cell = batch[idx];
-                        if (!cell || !data.daily) return;
+                        if (!cell || !data.daily) { errorCount++; return; }
 
-                        const temp = data.daily.temperature_2m_max[1] ?? 25;
-                        const rh = data.daily.relative_humidity_2m_mean[1] ?? 30;
-                        const wind = data.daily.wind_speed_10m_max[1] ?? 10;
-                        const rain = data.daily.precipitation_sum[1] ?? 0;
+                        const temp = data.daily.temperature_2m_max[1];
+                        const rh   = data.daily.relative_humidity_2m_mean[1];
+                        const wind = data.daily.wind_speed_10m_max[1];
+                        const rain = data.daily.precipitation_sum[1];
 
-                        // فرمول تجربی محاسبه FWI
-                        let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
+                        if (temp == null || rh == null || wind == null) { errorCount++; return; }
+
+                        let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - ((rain || 0) * 2);
                         if (fwi < 0) fwi = 0;
 
                         const color = getColor(fwi);
@@ -180,59 +183,29 @@
                             fillOpacity: 0.52
                         }).addTo(map);
 
-                        rect.bindPopup(`
-                            <div style="padding: 4px; direction: rtl; text-align: right;">
-                                <h4 style="color:#38bdf8;">سلول شبکه: ${cell.latCenter}, ${cell.lonCenter}</h4>
-                                <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
-                                <hr style="border-color:#334155; margin:6px 0;">
-                                <p style="font-size:0.8rem;">🌡️ حداکثر دما: ${temp} °C</p>
-                                <p style="font-size:0.8rem;">💧 میانگین رطوبت: ${rh}%</p>
-                                <p style="font-size:0.8rem;">💨 بیشینه سرعت باد: ${wind} km/h</p>
-                                <p style="font-size:0.8rem;">🌧️ بارش: ${rain} mm</p>
-                            </div>
-                        `);
+                        rect.bindPopup(
+                            '<div style="padding:4px; text-align:right;">' +
+                            '<h4 style="color:#38bdf8;">سلول شبکه: ' + cell.latCenter + ', ' + cell.lonCenter + '</h4>' +
+                            '<p style="margin-top:6px; font-size:0.95rem;">🔥 <b>شاخص FWI فردا: ' + fwi.toFixed(1) + '</b></p>' +
+                            '<hr style="border-color:#334155; margin:6px 0;">' +
+                            '<p style="font-size:0.8rem;">🌡️ حداکثر دما: ' + temp + ' °C</p>' +
+                            '<p style="font-size:0.8rem;">💧 میانگین رطوبت: ' + rh + '%</p>' +
+                            '<p style="font-size:0.8rem;">💨 بیشینه سرعت باد: ' + wind + ' km/h</p>' +
+                            '<p style="font-size:0.8rem;">🌧️ بارش: ' + (rain || 0) + ' mm</p>' +
+                            '</div>'
+                        );
                     });
 
-                    progressEl.innerText = `در حال بارگذاری شبکه استان: ${Math.min(100, Math.round(((i + batchSize) / gridCells.length) * 100))}%`;
+                    progressEl.innerText = 'در حال بارگذاری شبکه استان: ' +
+                        Math.min(100, Math.round(((i + batchSize) / gridCells.length) * 100)) + '%';
                 }
 
                 progressEl.style.display = 'none';
             } catch (err) {
-                console.error("خطا در بارگذاری:", err);
-                progressEl.innerText = "خطا در برقراری ارتباط با سرور هواشناسی";
-                progressEl.style.borderColor = "#ef4444fwi < 0) fwi = 0;
-
-                        const color = getColor(fwi);
-
-                        const rect = L.rectangle(cell.bounds, {
-                            color: color,
-                            weight: 0.6,
-                            fillColor: color,
-                            fillOpacity: 0.52
-                        }).addTo(map);
-
-                        rect.bindPopup(`
-                            <div style="padding: 4px; direction: rtl; text-align: right;">
-                                <h4 style="color:#38bdf8;">سلول شبکه: ${cell.latCenter}, ${cell.lonCenter}</h4>
-                                <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
-                                <hr style="border-color:#334155; margin:6px 0;">
-                                <p style="font-size:0.8rem;">🌡️ حداکثر دما: ${temp} °C</p>
-                                <p style="font-size:0.8rem;">💧 میانگین رطوبت: ${rh}%</p>
-                                <p style="font-size:0.8rem;">💨 بیشینه سرعت باد: ${wind} km/h</p>
-                                <p style="font-size:0.8rem;">🌧️ بارش: ${rain} mm</p>
-                            </div>
-                        `);
-                    });
-
-                    progressEl.innerText = `در حال بارگذاری شبکه استان: ${Math.min(100, Math.round(((i + batchSize) / gridCells.length) * 100))}%`;
-                }
-
-                progressEl.style.display = 'none';
-            } catch (err) {
-                console.error("خطا در بارگذاری:", err);
-                progressEl.innerText = "خطا در برقراری ارتباط با سرور هواشناسی";
-                progressEl.style.borderColor = "#ef4444";
-                progressEl.style.color = "#ef4444";
+                console.error('خطا در بارگذاری:', err);
+                progressEl.innerText = '❌ خطا در ارتباط با سرور هواشناسی — صفحه را رفرش کنید';
+                progressEl.style.borderColor = '#ef4444';
+                progressEl.style.color = '#ef4444';
             }
         }
 
