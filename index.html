@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پهنه‌بندی حریق در حریم ۵ کیلومتری مناطق حساس فارس</title>
+    <title>پهنه‌بندی خطر حریق FWI استان فارس - پوشش کامل</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Turf.js جهت ترسیم بافر ۵ کیلومتر و برش مکانی سلول‌ها -->
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
 
@@ -85,8 +84,8 @@
 
     <header>
         <div class="header-title">
-            <h1>سامانه پایش خطر حریق FWI در حریم ۵ کیلومتری مناطق حساس فارس</h1>
-            <p>برش داده‌های هواشناسی بر اساس مناطق چهارگانه و شکارممنوع + ۵ کیلومتر بافر</p>
+            <h1>سامانه پهنه‌بندی خطر حریق FWI استان فارس</h1>
+            <p>پوشش کامل کل سطح استان + مناطق چهارگانه و شکارممنوع — پیش‌بینی فردا</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -94,7 +93,7 @@
     </header>
 
     <div style="position: relative; flex: 1;">
-        <div id="loading-progress">در حال تولید بافر ۵ کیلومتر و برش مکانی سلول‌ها...</div>
+        <div id="loading-progress">در حال پوشش کامل استان فارس و دریافت داده‌های هواشناسی...</div>
         <div id="map"></div>
         <div class="legend">
             <b>سطوح خطر FWI (پهنه‌ای)</b><br>
@@ -107,7 +106,7 @@
     </div>
 
     <script>
-        // ۱. نمایش تاریخ فردا
+        // ۱. تاریخ فردا
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
@@ -122,16 +121,16 @@
         }).addTo(map);
 
         // ۳. گروه‌های لایه
-        const fwiLayer = L.layerGroup().addTo(map);
-        const protectedLayer = L.layerGroup().addTo(map);
-        const huntingLayer = L.layerGroup().addTo(map);
-        const bufferOutlineLayer = L.layerGroup().addTo(map);
+        const fwiLayer = L.layerGroup().addTo(map);       // پهنه‌های FWI کل استان
+        const protectedLayer = L.layerGroup().addTo(map); // مناطق چهارگانه
+        const huntingLayer = L.layerGroup().addTo(map);   // مناطق شکارممنوع
+        const provinceLayer = L.layerGroup().addTo(map);  // مرز استان
 
         const overlays = {
-            "🔥 پهنه‌های FWI (برش حریم ۵ کیلومتر)": fwiLayer,
+            "🔥 پهنه‌های FWI (کل استان)": fwiLayer,
             "🟢 مرز مناطق چهارگانه": protectedLayer,
             "🟣 مرز مناطق شکارممنوع": huntingLayer,
-            "🟡 خط بافر ۵ کیلومتر": bufferOutlineLayer
+            "⚪ مرز استان فارس": provinceLayer
         };
         L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
@@ -143,11 +142,13 @@
             return '#7f1d1d';
         }
 
-        // شبکه کلی استان با گام دقیق (پوشش کامل مختصات فارس)
-        const step = 0.18; // شبکه دقیق‌تر برای همپوشانی بهتر با بافر ۵ کیلومتر
+        // شبکه منظم با گام ۰.۱۸ درجه - پوشش کامل گستره استان فارس
+        // مرزها با کمی حاشیه (0.1 درجه) گرفته شده تا هیچ سلول لبه‌ای جا نماند
+        const step = 0.18;
+        const PAD = 0.1;
         const allGridCells = [];
-        for (let lat = 27.0; lat <= 31.8; lat += step) {
-            for (let lon = 50.4; lon <= 55.6; lon += step) {
+        for (let lat = 27.1 - PAD; lat <= 31.7 + PAD; lat += step) {
+            for (let lon = 50.5 - PAD; lon <= 55.5 + PAD; lon += step) {
                 allGridCells.push({
                     latCenter: parseFloat((lat + step / 2).toFixed(4)),
                     lonCenter: parseFloat((lon + step / 2).toFixed(4)),
@@ -156,7 +157,7 @@
             }
         }
 
-        // تبدیل سلول به پلیگون Turf جهت بررسی دقیق تقاطع
+        // تبدیل سلول به پلیگون Turf
         function cellToPolygon(cell) {
             const minLat = cell.bounds[0][0], minLon = cell.bounds[0][1];
             const maxLat = cell.bounds[1][0], maxLon = cell.bounds[1][1];
@@ -173,67 +174,58 @@
             const progressEl = document.getElementById('loading-progress');
 
             try {
-                // الف) بارگذاری مرز استان برای خط پیرامونی
+                // الف) بارگذاری مرز استان فارس (برای برش و خط نمایشی)
+                const resFars = await fetch('fars.geojson');
+                const farsData = await resFars.json();
+
+                L.geoJSON(farsData, {
+                    style: { color: '#94a3b8', weight: 2, fill: false, dashArray: '5, 4' }
+                }).addTo(provinceLayer);
+
+                // ب) لایه‌های نمایشی مناطق حساس
                 try {
-                    const resFars = await fetch('fars.geojson');
-                    const farsData = await resFars.json();
-                    L.geoJSON(farsData, {
-                        style: { color: '#64748b', weight: 1.2, fill: false, dashArray: '3, 3' }
-                    }).addTo(map);
-                } catch(e) {}
+                    const [resProt, resHunt] = await Promise.all([
+                        fetch('protected_areas.geojson'),
+                        fetch('hunting_banned.geojson')
+                    ]);
+                    const protData = await resProt.json();
+                    const huntData = await resHunt.json();
 
-                // ب) دریافت مناطق چهارگانه و شکارممنوع
-                const [resProt, resHunt] = await Promise.all([
-                    fetch('protected_areas.geojson'),
-                    fetch('hunting_banned.geojson')
-                ]);
+                    L.geoJSON(protData, {
+                        style: { color: '#22c55e', weight: 1.8, fillColor: '#22c55e', fillOpacity: 0.12 },
+                        onEachFeature: (f, l) => {
+                            const name = f.properties?.Name || f.properties?.name || 'منطقه چهارگانه';
+                            l.bindPopup(`<b>منطقه چهارگانه:</b> ${name}`);
+                        }
+                    }).addTo(protectedLayer);
 
-                const protData = await resProt.json();
-                const huntData = await resHunt.json();
+                    L.geoJSON(huntData, {
+                        style: { color: '#a855f7', weight: 1.8, fillColor: '#a855f7', fillOpacity: 0.12 },
+                        onEachFeature: (f, l) => {
+                            const name = f.properties?.Name || f.properties?.name || 'منطقه شکارممنوع';
+                            l.bindPopup(`<b>شکارممنوع:</b> ${name}`);
+                        }
+                    }).addTo(huntingLayer);
+                } catch (e) {
+                    console.warn('لایه‌های حساس بارگذاری نشدند:', e);
+                }
 
-                // ترسیم مرز مناطق روی نقشه
-                L.geoJSON(protData, {
-                    style: { color: '#22c55e', weight: 1.8, fillColor: '#22c55e', fillOpacity: 0.15 },
-                    onEachFeature: (f, l) => {
-                        const name = f.properties?.Name || f.properties?.name || 'منطقه چهارگانه';
-                        l.bindPopup(`<b>منطقه چهارگانه:</b> ${name}`);
-                    }
-                }).addTo(protectedLayer);
-
-                L.geoJSON(huntData, {
-                    style: { color: '#a855f7', weight: 1.8, fillColor: '#a855f7', fillOpacity: 0.15 },
-                    onEachFeature: (f, l) => {
-                        const name = f.properties?.Name || f.properties?.name || 'منطقه شکارممنوع';
-                        l.bindPopup(`<b>شکارممنوع:</b> ${name}`);
-                    }
-                }).addTo(huntingLayer);
-
-                // ج) محاسبه بافر ۵ کیلومتری روی مجموع کل مناطق
-                progressEl.innerText = 'در حال محاسبه بافر ۵ کیلومتری مناطق...';
-                const allSensitiveFeatures = [...protData.features, ...huntData.features];
-                const featureCollection = turf.featureCollection(allSensitiveFeatures);
-                
-                // ایجاد بافر دقیق ۵ کیلومتری
-                const bufferedZones = turf.buffer(featureCollection, 5, { units: 'kilometers' });
-
-                // نمایش خط بافر روی نقشه با رنگ طلایی
-                L.geoJSON(bufferedZones, {
-                    style: { color: '#eab308', weight: 1.2, dashArray: '3, 3', fill: false }
-                }).addTo(bufferOutlineLayer);
-
-                // د) برش مکانی: گزینش سلول‌هایی که با حریم ۵ کیلومتر برخورد یا همپوشانی دارند
-                progressEl.innerText = 'در حال برش مکانی سلول‌های حریق با حریم ۵ کیلومتر...';
-                const clippedCells = allGridCells.filter(cell => {
+                // ج) برش سلول‌ها با مرز استان - کل سلول بررسی می‌شود (نه فقط مرکز)
+                // نتیجه: هیچ سلولی حتی اگر گوشه‌اش داخل استان باشد از قلم نمی‌افتد
+                progressEl.innerText = 'در حال برش شبکه با مرز استان فارس...';
+                const provinceCells = allGridCells.filter(cell => {
                     const poly = cellToPolygon(cell);
-                    return bufferedZones.features.some(feature => turf.booleanIntersects(poly, feature));
+                    return farsData.features.some(feature =>
+                        turf.booleanIntersects(poly, feature)
+                    );
                 });
 
-                progressEl.innerText = `تعداد ${clippedCells.length} سلول در حریم ۵ کیلومتر برش خورد. دریافت وضعیت هواشناسی...`;
+                progressEl.innerText = `${provinceCells.length} سلول برای کل استان شناسایی شد. دریافت داده‌های هواشناسی...`;
 
-                // ه) استعلام هواشناسی به‌صورت دسته‌ای (Batch) برای سرعت حداکثری
+                // ه) استعلام دسته‌ای هواشناسی برای کل استان
                 const batchSize = 45;
-                for (let i = 0; i < clippedCells.length; i += batchSize) {
-                    const batch = clippedCells.slice(i, i + batchSize);
+                for (let i = 0; i < provinceCells.length; i += batchSize) {
+                    const batch = provinceCells.slice(i, i + batchSize);
                     const lats = batch.map(c => c.latCenter).join(',');
                     const lons = batch.map(c => c.lonCenter).join(',');
 
@@ -254,21 +246,20 @@
                         const rain = data.daily.precipitation_sum[1];
                         if (temp == null || rh == null || wind == null) return;
 
-                        // فرمول FWI روزانه
                         let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - ((rain || 0) * 2);
                         if (fwi < 0) fwi = 0;
 
                         const color = getColor(fwi);
                         const rect = L.rectangle(cell.bounds, {
                             color: color,
-                            weight: 0.8,
+                            weight: 0.6,
                             fillColor: color,
-                            fillOpacity: 0.55
+                            fillOpacity: 0.5
                         }).addTo(fwiLayer);
 
                         rect.bindPopup(
                             `<div style="text-align:right;">` +
-                            `<b style="color:#38bdf8;">حریم ۵ کیلومتر مناطق حساس</b>` +
+                            `<b style="color:#38bdf8;">پهنه‌بندی FWI استان فارس</b>` +
                             `<p style="margin-top:4px;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>` +
                             `<hr style="border-color:#334155; margin:5px 0;">` +
                             `<p style="font-size:0.8rem;">🌡️ بیشینه دما: ${temp} °C</p>` +
@@ -278,6 +269,10 @@
                             `</div>`
                         );
                     });
+
+                    // به‌روزرسانی نوار پیشرفت
+                    const percent = Math.min(100, Math.round((i + batchSize) / provinceCells.length * 100));
+                    progressEl.innerText = `دریافت هواشناسی... ${percent}%`;
                 }
 
                 progressEl.style.display = 'none';
