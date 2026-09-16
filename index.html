@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پهنه‌بندی حریق در حریم ۱۰ کیلومتری مناطق حساس فارس</title>
+    <title>پهنه‌بندی حریق در حریم ۵ کیلومتری مناطق حساس فارس</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Turf.js برای محاسبه بافر دقیق و تقاطع سلول‌ها -->
+    <!-- Turf.js جهت ترسیم بافر ۵ کیلومتر و برش مکانی سلول‌ها -->
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
 
@@ -24,7 +24,7 @@
             align-items: center;
             z-index: 1000;
         }
-        .header-title h1 { font-size: 1.1rem; color: #f97316; }
+        .header-title h1 { font-size: 1.05rem; color: #f97316; }
         .header-title p { font-size: 0.75rem; color: #94a3b8; }
 
         .badge {
@@ -85,8 +85,8 @@
 
     <header>
         <div class="header-title">
-            <h1>سامانه پایش خطر حریق FWI در حریم ۱۰ کیلومتری مناطق حساس فارس</h1>
-            <p>برش داده‌های هواشناسی بر اساس مناطق چهارگانه و شکارممنوع + ۱۰ کیلومتر بافر</p>
+            <h1>سامانه پایش خطر حریق FWI در حریم ۵ کیلومتری مناطق حساس فارس</h1>
+            <p>برش داده‌های هواشناسی بر اساس مناطق چهارگانه و شکارممنوع + ۵ کیلومتر بافر</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -94,7 +94,7 @@
     </header>
 
     <div style="position: relative; flex: 1;">
-        <div id="loading-progress">در حال تولید بافر ۱۰ کیلومتر و استخراج سلول‌های حریق...</div>
+        <div id="loading-progress">در حال تولید بافر ۵ کیلومتر و برش مکانی سلول‌ها...</div>
         <div id="map"></div>
         <div class="legend">
             <b>سطوح خطر FWI (پهنه‌ای)</b><br>
@@ -107,7 +107,7 @@
     </div>
 
     <script>
-        // ۱. تاریخ فردا
+        // ۱. نمایش تاریخ فردا
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
@@ -128,10 +128,10 @@
         const bufferOutlineLayer = L.layerGroup().addTo(map);
 
         const overlays = {
-            "🔥 شبکه خطر حریق (بافر ۱۰ کیلومتر)": fwiLayer,
+            "🔥 پهنه‌های FWI (برش حریم ۵ کیلومتر)": fwiLayer,
             "🟢 مرز مناطق چهارگانه": protectedLayer,
             "🟣 مرز مناطق شکارممنوع": huntingLayer,
-            "🟡 محدوده بافر ۱۰ کیلومتر": bufferOutlineLayer
+            "🟡 خط بافر ۵ کیلومتر": bufferOutlineLayer
         };
         L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
@@ -143,11 +143,11 @@
             return '#7f1d1d';
         }
 
-        // شبکه پایه استان فارس (گام ۰.۲۲ درجه)
-        const step = 0.22;
+        // شبکه کلی استان با گام دقیق (پوشش کامل مختصات فارس)
+        const step = 0.18; // شبکه دقیق‌تر برای همپوشانی بهتر با بافر ۵ کیلومتر
         const allGridCells = [];
-        for (let lat = 27.2; lat <= 31.5; lat += step) {
-            for (let lon = 50.6; lon <= 55.4; lon += step) {
+        for (let lat = 27.0; lat <= 31.8; lat += step) {
+            for (let lon = 50.4; lon <= 55.6; lon += step) {
                 allGridCells.push({
                     latCenter: parseFloat((lat + step / 2).toFixed(4)),
                     lonCenter: parseFloat((lon + step / 2).toFixed(4)),
@@ -156,7 +156,7 @@
             }
         }
 
-        // ساخت پلیگون هر سلول (یک‌بار ساخته و استفاده می‌شود)
+        // تبدیل سلول به پلیگون Turf جهت بررسی دقیق تقاطع
         function cellToPolygon(cell) {
             const minLat = cell.bounds[0][0], minLon = cell.bounds[0][1];
             const maxLat = cell.bounds[1][0], maxLon = cell.bounds[1][1];
@@ -173,7 +173,7 @@
             const progressEl = document.getElementById('loading-progress');
 
             try {
-                // الف) بارگذاری مرز استان برای پس‌زمینه
+                // الف) بارگذاری مرز استان برای خط پیرامونی
                 try {
                     const resFars = await fetch('fars.geojson');
                     const farsData = await resFars.json();
@@ -182,7 +182,7 @@
                     }).addTo(map);
                 } catch(e) {}
 
-                // ب) بارگذاری لایه‌های حساس
+                // ب) دریافت مناطق چهارگانه و شکارممنوع
                 const [resProt, resHunt] = await Promise.all([
                     fetch('protected_areas.geojson'),
                     fetch('hunting_banned.geojson')
@@ -191,7 +191,7 @@
                 const protData = await resProt.json();
                 const huntData = await resHunt.json();
 
-                // ترسیم مرز مناطق اصلی
+                // ترسیم مرز مناطق روی نقشه
                 L.geoJSON(protData, {
                     style: { color: '#22c55e', weight: 1.8, fillColor: '#22c55e', fillOpacity: 0.15 },
                     onEachFeature: (f, l) => {
@@ -208,40 +208,39 @@
                     }
                 }).addTo(huntingLayer);
 
-                // ج) ساخت بافر ۱۰ کیلومتری برای کل فیچرهای حساس
-                progressEl.innerText = 'در حال محاسبه بافر ۱۰ کیلومتر...';
+                // ج) محاسبه بافر ۵ کیلومتری روی مجموع کل مناطق
+                progressEl.innerText = 'در حال محاسبه بافر ۵ کیلومتری مناطق...';
                 const allSensitiveFeatures = [...protData.features, ...huntData.features];
                 const featureCollection = turf.featureCollection(allSensitiveFeatures);
-                const bufferedZones = turf.buffer(featureCollection, 10, { units: 'kilometers' });
+                
+                // ایجاد بافر دقیق ۵ کیلومتری
+                const bufferedZones = turf.buffer(featureCollection, 5, { units: 'kilometers' });
 
-                // نمایش خط بافر
+                // نمایش خط بافر روی نقشه با رنگ طلایی
                 L.geoJSON(bufferedZones, {
-                    style: { color: '#eab308', weight: 1, dashArray: '4, 4', fill: false }
+                    style: { color: '#eab308', weight: 1.2, dashArray: '3, 3', fill: false }
                 }).addTo(bufferOutlineLayer);
 
-                // د) فیلتر سلول‌های شبکه FWI — نسخه اصلاح‌شده:
-                // هر سلولی که حتی بخش کوچکی از آن با بافر ۱۰ کیلومتر تقاطع داشته باشد نگه داشته می‌شود
-                // (این شرط خودِ «داخل بودن کامل» و «تماس مرزی» را هم پوشش می‌دهد)
-                const sensitiveCells = allGridCells.filter(cell => {
-                    const cellPolygon = cellToPolygon(cell);
-                    return bufferedZones.features.some(feature =>
-                        turf.booleanIntersects(cellPolygon, feature)
-                    );
+                // د) برش مکانی: گزینش سلول‌هایی که با حریم ۵ کیلومتر برخورد یا همپوشانی دارند
+                progressEl.innerText = 'در حال برش مکانی سلول‌های حریق با حریم ۵ کیلومتر...';
+                const clippedCells = allGridCells.filter(cell => {
+                    const poly = cellToPolygon(cell);
+                    return bufferedZones.features.some(feature => turf.booleanIntersects(poly, feature));
                 });
 
-                progressEl.innerText = `تعداد ${sensitiveCells.length} سلول حساس شناسایی شد. دریافت وضعیت هواشناسی...`;
+                progressEl.innerText = `تعداد ${clippedCells.length} سلول در حریم ۵ کیلومتر برش خورد. دریافت وضعیت هواشناسی...`;
 
-                // ه) استعلام هواشناسی دسته‌ای و رسم سلول‌ها
+                // ه) استعلام هواشناسی به‌صورت دسته‌ای (Batch) برای سرعت حداکثری
                 const batchSize = 45;
-                for (let i = 0; i < sensitiveCells.length; i += batchSize) {
-                    const batch = sensitiveCells.slice(i, i + batchSize);
+                for (let i = 0; i < clippedCells.length; i += batchSize) {
+                    const batch = clippedCells.slice(i, i + batchSize);
                     const lats = batch.map(c => c.latCenter).join(',');
                     const lons = batch.map(c => c.lonCenter).join(',');
 
                     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
 
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error('خطا در API');
+                    if (!res.ok) throw new Error('خطا در ارتباط با سرور هواشناسی');
                     const rawData = await res.json();
                     const dataArray = Array.isArray(rawData) ? rawData : [rawData];
 
@@ -255,23 +254,27 @@
                         const rain = data.daily.precipitation_sum[1];
                         if (temp == null || rh == null || wind == null) return;
 
+                        // فرمول FWI روزانه
                         let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - ((rain || 0) * 2);
                         if (fwi < 0) fwi = 0;
 
                         const color = getColor(fwi);
                         const rect = L.rectangle(cell.bounds, {
-                            color: color, weight: 0.8, fillColor: color, fillOpacity: 0.55
+                            color: color,
+                            weight: 0.8,
+                            fillColor: color,
+                            fillOpacity: 0.55
                         }).addTo(fwiLayer);
 
                         rect.bindPopup(
                             `<div style="text-align:right;">` +
-                            `<b style="color:#38bdf8;">حریم ۱۰ کیلومتر مناطق حساس</b>` +
+                            `<b style="color:#38bdf8;">حریم ۵ کیلومتر مناطق حساس</b>` +
                             `<p style="margin-top:4px;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>` +
                             `<hr style="border-color:#334155; margin:5px 0;">` +
-                            `<p style="font-size:0.8rem;">🌡️ دما: ${temp} °C</p>` +
-                            `<p style="font-size:0.8rem;">💧 رطوبت: ${rh}%</p>` +
-                            `<p style="font-size:0.8rem;">💨 سرعت باد: ${wind} km/h</p>` +
-                            `<p style="font-size:0.8rem;">🌧️ بارش: ${rain || 0} mm</p>` +
+                            `<p style="font-size:0.8rem;">🌡️ بیشینه دما: ${temp} °C</p>` +
+                            `<p style="font-size:0.8rem;">💧 رطوبت میانگین: ${rh}%</p>` +
+                            `<p style="font-size:0.8rem;">💨 بیشینه باد: ${wind} km/h</p>` +
+                            `<p style="font-size:0.8rem;">🌧️ مجموع بارش: ${rain || 0} mm</p>` +
                             `</div>`
                         );
                     });
