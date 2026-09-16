@@ -54,6 +54,18 @@
         .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; direction: rtl; }
         .leaflet-popup-tip { background: #1e293b; }
 
+        /* فارسی‌سازی پنل کنترل لایه‌ها */
+        .leaflet-control-layers {
+            background: #1e293b !important;
+            color: #fff !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+            direction: rtl;
+            font-size: 0.85rem;
+        }
+        .leaflet-control-layers-expanded { padding: 10px 14px !important; }
+        .leaflet-bar a { background: #1e293b; color: #fff; border-color: #334155; }
+
         #loading-progress {
             position: absolute;
             top: 15px;
@@ -74,7 +86,7 @@
     <header>
         <div class="header-title">
             <h1>سامانه پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس</h1>
-            <p>پوشش کامل مساحتی استان | برش‌خورده با مرز ۳۷ شهرستان | داده‌های پیش‌بینی فردا (Open-Meteo)</p>
+            <p>برش با مرز استان | لایه‌های مناطق چهارگانه و شکارممنوع | پیش‌بینی فردا (Open-Meteo)</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -102,12 +114,24 @@
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. نقشه پایه OpenStreetMap (رایگان و بدون نیاز به API Key)
+        // ۲. نقشه پایه OpenStreetMap (بدون نیاز به API Key)
         const map = L.map('map').setView([29.3, 53.6], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
+
+        // ۳. گروه لایه‌های قابل تیک‌زدن
+        const protectedLayer = L.layerGroup();
+        const huntingLayer = L.layerGroup();
+
+        // پنل تیک‌دار لایه‌ها (گوشه بالا-چپ نقشه)
+        const baseLayers = { "نقشه پایه (OSM)": L.tileLayer('', { maxZoom: 0 }) };
+        const overlays = {
+            "🟢 مناطق چهارگانه محیط‌زیست": protectedLayer,
+            "🟣 مناطق شکارممنوع": huntingLayer
+        };
+        L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
         function getColor(fwi) {
             if (fwi < 5)  return '#22c55e';
@@ -117,11 +141,10 @@
             return '#7f1d1d';
         }
 
-        // ۳. شکل‌ها و ابزار هندسی
-        const turfPolygons = []; // آرایه‌ای از پلی‌گون‌های شهرستان‌های فارس
+        // ۴. هندسه: بررسی داخل‌بودن نقطه در مرز استان (Ray Casting)
+        const farsPolygons = [];
         const step = 0.22;
 
-        // تابع بررسی اینکه یک نقطه داخل مرز استان فارس است یا نه (الگوریتم Ray Casting)
         function pointInRing(lat, lon, ring) {
             let inside = false;
             for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -134,27 +157,22 @@
             return inside;
         }
 
-        function pointInPolygon(lat, lon, polygon) {
-            // پشتیبانی از Polygon و MultiPolygon
-            if (polygon.type === 'Polygon') {
-                return pointInRing(lat, lon, polygon.coordinates[0]);
-            }
-            if (polygon.type === 'MultiPolygon') {
-                for (const p of polygon.coordinates) {
-                    if (pointInRing(lat, lon, p[0])) return true;
-                }
+        function pointInGeometry(lat, lon, geom) {
+            if (geom.type === 'Polygon') return pointInRing(lat, lon, geom.coordinates[0]);
+            if (geom.type === 'MultiPolygon') {
+                for (const p of geom.coordinates) { if (pointInRing(lat, lon, p[0])) return true; }
             }
             return false;
         }
 
         function isInsideFars(lat, lon) {
-            for (const poly of turfPolygons) {
-                if (pointInPolygon(lat, lon, poly)) return true;
+            for (const poly of farsPolygons) {
+                if (pointInGeometry(lat, lon, poly)) return true;
             }
             return false;
         }
 
-        // ۴. ساخت شبکه سلولی
+        // ۵. ساخت شبکه سلولی
         const gridCells = [];
         for (let lat = 27.2; lat <= 31.5; lat += step) {
             for (let lon = 50.6; lon <= 55.4; lon += step) {
@@ -166,35 +184,56 @@
             }
         }
 
-        // ۵. بارگذاری مرز استان و سپس رسم شبکه برش‌خورده
+        // ۶. بارگذاری لایه‌ها و اجرا
         async function init() {
             const progressEl = document.getElementById('loading-progress');
 
-            // --- بارگذاری مرز ۳۷ شهرستان فارس ---
-            let farsData;
+            // --- بارگذاری مرز استان (fars.geojson) ---
             try {
-                const res = await fetch('fars_districts.geojson');
-                farsData = await res.json();
-                for (const f of farsData.features) {
-                    turfPolygons.push(f.geometry);
-                }
-                // نمایش مرز استان با خط سفید ظریف
+                const res = await fetch('fars.geojson');
+                const farsData = await res.json();
+                for (const f of farsData.features) farsPolygons.push(f.geometry);
+
                 L.geoJSON(farsData, {
-                    style: { color: '#e2e8f0', weight: 1.2, fill: false }
+                    style: { color: '#e2e8f0', weight: 1.5, fill: false }
                 }).addTo(map);
             } catch (e) {
-                console.error('خطا در خواندن فایل مرزها:', e);
-                progressEl.innerText = '⚠️ فایل fars_districts.geojson یافت نشد — لطفاً آن را در مخزن آپلود کنید';
-                progressEl.style.borderColor = '#eab308';
-                progressEl.style.color = '#eab308';
+                console.error('خطا در fars.geojson:', e);
+                progressEl.innerText = '⚠️ فایل fars.geojson یافت نشد';
             }
 
-            // فیلتر سلول‌ها: فقط سلول‌های داخل مرز استان فارس
+            // --- لایه مناطق چهارگانه محیط‌زیست (سبز) ---
+            try {
+                const res1 = await fetch('protected_areas.geojson');
+                const protData = await res1.json();
+                L.geoJSON(protData, {
+                    style: { color: '#22c55e', weight: 1.5, fillColor: '#22c55e', fillOpacity: 0.15 },
+                    onEachFeature: function (feature, layer) {
+                        const name = feature.properties && (feature.properties.Name || feature.properties.name || feature.properties.NAME || 'منطقه حفاظت‌شده');
+                        layer.bindPopup('<div style="text-align:right;"><b style="color:#22c55e;">منطقه چهارگانه محیط‌زیست</b><hr style="border-color:#334155;"><p>' + name + '</p></div>');
+                    }
+                }).addTo(protectedLayer);
+            } catch (e) { console.error('خطا در protected_areas:', e); }
+
+            // --- لایه مناطق شکارممنوع (بنفش) ---
+            try {
+                const res2 = await fetch('hunting_banned.geojson');
+                const huntData = await res2.json();
+                L.geoJSON(huntData, {
+                    style: { color: '#a855f7', weight: 1.5, fillColor: '#a855f7', fillOpacity: 0.15 },
+                    onEachFeature: function (feature, layer) {
+                        const name = feature.properties && (feature.properties.Name || feature.properties.name || feature.properties.NAME || 'منطقه شکارممنوع');
+                        layer.bindPopup('<div style="text-align:right;"><b style="color:#a855f7;">منطقه شکارممنوع</b><hr style="border-color:#334155;"><p>' + name + '</p></div>');
+                    }
+                }).addTo(huntingLayer);
+            } catch (e) { console.error('خطا در hunting_banned:', e); }
+
+            // --- فیلتر سلول‌های داخل مرز استان ---
             const farsCells = gridCells.filter(function (c) {
                 return isInsideFars(c.latCenter, c.lonCenter);
             });
 
-            // --- دریافت دسته‌ای داده‌های هواشناسی ---
+            // --- دریافت دسته‌ای داده‌های هواشناسی و رسم شبکه ---
             const batchSize = 45;
             try {
                 for (let i = 0; i < farsCells.length; i += batchSize) {
@@ -228,10 +267,7 @@
 
                         const color = getColor(fwi);
                         const rect = L.rectangle(cell.bounds, {
-                            color: color,
-                            weight: 0.6,
-                            fillColor: color,
-                            fillOpacity: 0.5
+                            color: color, weight: 0.6, fillColor: color, fillOpacity: 0.45
                         }).addTo(map);
 
                         rect.bindPopup(
