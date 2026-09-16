@@ -7,6 +7,8 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- کتابخانه محاسبات مکانی برای ساخت بافر دقیق ۱۰ کیلومتری -->
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
 
     <style>
@@ -54,17 +56,17 @@
         .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; direction: rtl; }
         .leaflet-popup-tip { background: #1e293b; }
 
-        /* فارسی‌سازی پنل کنترل لایه‌ها */
+        /* استایل پنل کنترل لایه‌ها */
         .leaflet-control-layers {
             background: #1e293b !important;
             color: #fff !important;
             border: 1px solid #334155 !important;
             border-radius: 8px !important;
             direction: rtl;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
         }
         .leaflet-control-layers-expanded { padding: 10px 14px !important; }
-        .leaflet-bar a { background: #1e293b; color: #fff; border-color: #334155; }
+        .leaflet-control-layers label { margin-bottom: 4px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
 
         #loading-progress {
             position: absolute;
@@ -86,7 +88,7 @@
     <header>
         <div class="header-title">
             <h1>سامانه پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس</h1>
-            <p>برش با مرز استان | لایه‌های مناطق چهارگانه و شکارممنوع | پیش‌بینی فردا (Open-Meteo)</p>
+            <p>برش با مرز استان | لایه‌های حفاظتی و بافر ۱۰ کیلومتر | پیش‌بینی فردا (Open-Meteo)</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -94,7 +96,7 @@
     </header>
 
     <div style="position: relative; flex: 1;">
-        <div id="loading-progress">در حال دریافت مرز استان و داده‌های هواشناسی...</div>
+        <div id="loading-progress">در حال دریافت لایه‌ها، محاسبه بافر ۱۰ کیلومتر و داده‌های FWI...</div>
         <div id="map"></div>
         <div class="legend">
             <b>سطوح خطر FWI (پهنه‌ای)</b><br>
@@ -114,22 +116,24 @@
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. نقشه پایه OpenStreetMap (بدون نیاز به API Key)
+        // ۲. نقشه پایه OpenStreetMap
         const map = L.map('map').setView([29.3, 53.6], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // ۳. گروه لایه‌های قابل تیک‌زدن
+        // ۳. گروه‌های لایه بافر و مرزها
         const protectedLayer = L.layerGroup();
+        const protectedBufferLayer = L.layerGroup();
         const huntingLayer = L.layerGroup();
+        const huntingBufferLayer = L.layerGroup();
 
-        // پنل تیک‌دار لایه‌ها (گوشه بالا-چپ نقشه)
-        const baseLayers = { "نقشه پایه (OSM)": L.tileLayer('', { maxZoom: 0 }) };
         const overlays = {
-            "🟢 مناطق چهارگانه محیط‌زیست": protectedLayer,
-            "🟣 مناطق شکارممنوع": huntingLayer
+            "🟢 مناطق چهارگانه": protectedLayer,
+            "🟡 بافر ۱۰ کیلومتر چهارگانه": protectedBufferLayer,
+            "🟣 مناطق شکارممنوع": huntingLayer,
+            "🔵 بافر ۱۰ کیلومتر شکارممنوع": huntingBufferLayer
         };
         L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
@@ -141,7 +145,7 @@
             return '#7f1d1d';
         }
 
-        // ۴. هندسه: بررسی داخل‌بودن نقطه در مرز استان (Ray Casting)
+        // ۴. متد بررسی قرارگیری نقطه در چندضلعی‌های مرز استان
         const farsPolygons = [];
         const step = 0.22;
 
@@ -172,7 +176,7 @@
             return false;
         }
 
-        // ۵. ساخت شبکه سلولی
+        // ۵. ایجاد شبکه نقاط
         const gridCells = [];
         for (let lat = 27.2; lat <= 31.5; lat += step) {
             for (let lon = 50.6; lon <= 55.4; lon += step) {
@@ -184,56 +188,94 @@
             }
         }
 
-        // ۶. بارگذاری لایه‌ها و اجرا
+        // تابع ساخت لایه بافر ۱۰ کیلومتری با Turf.js
+        function createBufferLayer(geojsonData, bufferDistanceKm, strokeColor, fillColor) {
+            try {
+                const buffered = turf.buffer(geojsonData, bufferDistanceKm, { units: 'kilometers' });
+                return L.geoJSON(buffered, {
+                    style: {
+                        color: strokeColor,
+                        weight: 1.5,
+                        dashArray: '4, 4',
+                        fillColor: fillColor,
+                        fillOpacity: 0.12
+                    },
+                    interactive: false
+                });
+            } catch (err) {
+                console.warn('خطا در محاسبه بافر:', err);
+                return null;
+            }
+        }
+
+        // ۶. بارگذاری و اجرای نقشه
         async function init() {
             const progressEl = document.getElementById('loading-progress');
 
-            // --- بارگذاری مرز استان (fars.geojson) ---
+            // الف) لایه مرز استان
             try {
                 const res = await fetch('fars.geojson');
                 const farsData = await res.json();
                 for (const f of farsData.features) farsPolygons.push(f.geometry);
 
                 L.geoJSON(farsData, {
-                    style: { color: '#e2e8f0', weight: 1.5, fill: false }
+                    style: { color: '#e2e8f0', weight: 1.4, fill: false }
                 }).addTo(map);
             } catch (e) {
                 console.error('خطا در fars.geojson:', e);
-                progressEl.innerText = '⚠️ فایل fars.geojson یافت نشد';
             }
 
-            // --- لایه مناطق چهارگانه محیط‌زیست (سبز) ---
+            // ب) لایه مناطق چهارگانه و بافر ۱۰ کیلومتر
             try {
                 const res1 = await fetch('protected_areas.geojson');
                 const protData = await res1.json();
+
+                // بافر ۱۰ کیلومتر
+                const buf1 = createBufferLayer(protData, 10, '#eab308', '#facc15');
+                if (buf1) buf1.addTo(protectedBufferLayer);
+
+                // لایه اصلی
                 L.geoJSON(protData, {
-                    style: { color: '#22c55e', weight: 1.5, fillColor: '#22c55e', fillOpacity: 0.15 },
+                    style: { color: '#22c55e', weight: 1.8, fillColor: '#22c55e', fillOpacity: 0.25 },
                     onEachFeature: function (feature, layer) {
-                        const name = feature.properties && (feature.properties.Name || feature.properties.name || feature.properties.NAME || 'منطقه حفاظت‌شده');
-                        layer.bindPopup('<div style="text-align:right;"><b style="color:#22c55e;">منطقه چهارگانه محیط‌زیست</b><hr style="border-color:#334155;"><p>' + name + '</p></div>');
+                        const name = feature.properties && (feature.properties.Name || feature.properties.name || feature.properties.NAME || 'منطقه چهارگانه');
+                        layer.bindPopup('<div style="text-align:right;"><b style="color:#22c55e;">منطقه چهارگانه محیط‌زیست</b><hr style="border-color:#334155;margin:4px 0;"><p>' + name + '</p></div>');
                     }
                 }).addTo(protectedLayer);
+
+                // پیش‌فرض: بافر و لایه چهارگانه فعال باشند
+                map.addLayer(protectedLayer);
+                map.addLayer(protectedBufferLayer);
             } catch (e) { console.error('خطا در protected_areas:', e); }
 
-            // --- لایه مناطق شکارممنوع (بنفش) ---
+            // ج) لایه مناطق شکارممنوع و بافر ۱۰ کیلومتر
             try {
                 const res2 = await fetch('hunting_banned.geojson');
                 const huntData = await res2.json();
+
+                // بافر ۱۰ کیلومتر
+                const buf2 = createBufferLayer(huntData, 10, '#38bdf8', '#38bdf8');
+                if (buf2) buf2.addTo(huntingBufferLayer);
+
+                // لایه اصلی
                 L.geoJSON(huntData, {
-                    style: { color: '#a855f7', weight: 1.5, fillColor: '#a855f7', fillOpacity: 0.15 },
+                    style: { color: '#a855f7', weight: 1.8, fillColor: '#a855f7', fillOpacity: 0.25 },
                     onEachFeature: function (feature, layer) {
                         const name = feature.properties && (feature.properties.Name || feature.properties.name || feature.properties.NAME || 'منطقه شکارممنوع');
-                        layer.bindPopup('<div style="text-align:right;"><b style="color:#a855f7;">منطقه شکارممنوع</b><hr style="border-color:#334155;"><p>' + name + '</p></div>');
+                        layer.bindPopup('<div style="text-align:right;"><b style="color:#a855f7;">منطقه شکارممنوع</b><hr style="border-color:#334155;margin:4px 0;"><p>' + name + '</p></div>');
                     }
                 }).addTo(huntingLayer);
+
+                // پیش‌فرض فعال باشد
+                map.addLayer(huntingLayer);
             } catch (e) { console.error('خطا در hunting_banned:', e); }
 
-            // --- فیلتر سلول‌های داخل مرز استان ---
+            // د) برش شبکه هواشناسی با مرز فارس
             const farsCells = gridCells.filter(function (c) {
                 return isInsideFars(c.latCenter, c.lonCenter);
             });
 
-            // --- دریافت دسته‌ای داده‌های هواشناسی و رسم شبکه ---
+            // ه) دریافت دسته‌ای هواشناسی
             const batchSize = 45;
             try {
                 for (let i = 0; i < farsCells.length; i += batchSize) {
@@ -283,13 +325,13 @@
                         );
                     });
 
-                    progressEl.innerText = 'در حال بارگذاری: ' +
+                    progressEl.innerText = 'در حال پردازش: ' +
                         Math.min(100, Math.round(((i + batchSize) / farsCells.length) * 100)) + '%';
                 }
                 progressEl.style.display = 'none';
             } catch (err) {
                 console.error('خطا:', err);
-                progressEl.innerText = '❌ خطا در ارتباط با سرور هواشناسی — رفرش کنید';
+                progressEl.innerText = '❌ خطا در دریافت اطلاعات هواشناسی';
                 progressEl.style.borderColor = '#ef4444';
                 progressEl.style.color = '#ef4444';
             }
