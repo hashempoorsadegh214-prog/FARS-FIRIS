@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>سامانه پایش و پهنه‌بندی خطر حریق (FWI) استان فارس</title>
+  <title>سامانه هوشمند پیش بینی و پهنه بندی حریق در استان فارس</title>
 
   <!-- Leaflet & Turf.js -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,69 +17,100 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
+    /* هدر قرمز یکپارچه */
     header {
-      background: #ffffff;
-      padding: 10px 20px;
-      border-bottom: 2px solid #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
-      z-index: 1000;
-      gap: 10px;
-    }
-    .header-title h1 { font-size: 1.05rem; color: #c2410c; }
-    .header-title p { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
-    .header-actions { display: flex; gap: 10px; align-items: center; }
-
-    .badge {
-      background: #ea580c;
+      background: #b91c1c;
       color: #ffffff;
-      padding: 6px 14px;
+      padding: 10px 20px;
+      border-bottom: 2px solid #991b1b;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      z-index: 1000;
+      gap: 5px;
+      text-align: center;
+    }
+    .header-title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .header-title h1 { 
+      font-size: 1.15rem; 
+      color: #ffffff; 
+      font-weight: 800; 
+    }
+    .header-title p { 
+      font-size: 0.8rem; 
+      color: #fee2e2; 
+    }
+
+    /* تابلو تاریخ زیر تیتر */
+    .badge {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 4px 14px;
       border-radius: 20px;
       font-weight: bold;
-      font-size: 0.85rem;
-      box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+      font-size: 0.82rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       white-space: nowrap;
+      margin-top: 3px;
+    }
+
+    /* دکمه‌های چسبیده به بخش نقشه‌ها و لایه‌ها */
+    .map-action-buttons {
+      position: absolute;
+      top: 10px;
+      left: 270px;
+      display: flex;
+      gap: 8px;
+      z-index: 999;
+      align-items: center;
     }
 
     .report-btn {
       background: #b91c1c;
       color: #ffffff;
-      border: none;
+      border: 1px solid #991b1b;
       cursor: pointer;
-      padding: 7px 16px;
-      border-radius: 20px;
+      padding: 7px 14px;
+      border-radius: 8px;
       font-weight: bold;
-      font-size: 0.85rem;
+      font-size: 0.83rem;
       font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
     }
-    .report-btn:hover { background: #991b1b; }
+    .report-btn:hover { background: #991b1b; transform: translateY(-1px); }
     .report-btn:disabled { background: #9ca3af; cursor: wait; }
 
-    /* دکمه جدید راهنما */
     .guide-btn {
       background: #0284c7;
       color: #ffffff;
-      border: none;
+      border: 1px solid #0369a1;
       cursor: pointer;
-      padding: 7px 16px;
-      border-radius: 20px;
+      padding: 7px 14px;
+      border-radius: 8px;
       font-weight: bold;
-      font-size: 0.85rem;
+      font-size: 0.83rem;
       font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
     }
-    .guide-btn:hover { background: #0369a1; }
+    .guide-btn:hover { background: #0369a1; transform: translateY(-1px); }
 
     #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
 
@@ -145,7 +176,7 @@
       z-index: 1000;
     }
 
-    /* استایل پنجره مودال راهنما */
+    /* پنجره مودال راهنما */
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -208,23 +239,34 @@
     .modal-body ul { padding-right: 20px; margin-bottom: 10px; }
     .modal-body li { margin-bottom: 4px; }
     .modal-body p { margin-bottom: 8px; text-align: justify; }
+
+    @media (max-width: 768px) {
+      .map-action-buttons {
+        left: 10px;
+        top: auto;
+        bottom: 25px;
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 
 <body>
 <header>
   <div class="header-title">
-    <h1>سامانه پایش آنلاین حریق و شاخص FWI استان فارس</h1>
+    <h1>سامانه هوشمند پیش بینی و پهنه بندی حریق در استان فارس</h1>
     <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و پهنه‌بندی شبکه‌ای استان</p>
-  </div>
-  <div class="header-actions">
-    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
-    <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
     <div class="badge">📅 پیش‌بینی فردا: <span id="tomorrow-date">در حال دریافت...</span></div>
   </div>
 </header>
 
 <div style="position: relative; flex: 1;">
+  <!-- دکمه‌های چسبیده به بخش کنترل لایه‌ها -->
+  <div class="map-action-buttons">
+    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
+    <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
+  </div>
+
   <div id="loading-progress">در حال آماده‌سازی سامانه...</div>
   <div id="map"></div>
 
@@ -371,7 +413,6 @@
       if (!res.ok) throw new Error("HTTP Error");
       return await res.json();
     } catch {
-      // داده‌های فال‌بک منطقی در صورت مسدود شدن یا لگ API
       return {
         daily: {
           temperature_2m_max: [30, 32],
@@ -417,14 +458,14 @@
         <div class="stat-row"><span class="stat-label">🌡️ بیشینه دما:</span><span class="stat-val">${temp} °C</span></div>
         <div class="stat-row"><span class="stat-label">💧 رطوبت نسبی:</span><span class="stat-val">${rh}%</span></div>
         <div class="stat-row"><span class="stat-label">💨 سرعت باد:</span><span class="stat-val">${wind} km/h</span></div>
-        <div class="stat-row"><span class="stat-label">🌧️ بارش ۲۴ ساعته:</span><span class="stat-val">${rain} mm</span></div>`;
-
-      L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
-    });
+        <div class="stat-row"><span class="stat-label">🌧️ بارش ۲۴ ساعته:</span><span class res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
   }
 
-  async function loadGeoJson(url) {
-    const res = await fetch(url);
+  async function init() {
+    try {
+       res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   }
@@ -465,7 +506,7 @@
         }).addTo(huntingLayer);
       } catch (e) { console.warn('hunting_banned:', e); }
 
-      // ۳. ذخیره شهرستان‌ها فقط برای گزارش
+      // ۳. شهرستان‌ها فقط برای گزارش
       try {
         const districtsData = await loadGeoJson('fars_districts.geojson');
         const feats = districtsData?.features || [districtsData];
@@ -637,7 +678,7 @@
         <tr><th>نام منطقه</th><th>نوع</th><th>FWI</th><th>ریسک</th><th>سطح اخطار</th><th>دما</th><th>رطوبت</th><th>باد</th><th>بارش</th></tr>
         ${rows}
       </table>
-      <div class="footer">سامانه پایش و پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس — FARS-FIRIS</div>
+      <div class="footer">سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق در استان فارس</div>
       <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🖨️ چاپ / ذخیره PDF</button></div>
       </body></html>`);
     w.document.close();
