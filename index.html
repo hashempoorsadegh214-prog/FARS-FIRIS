@@ -24,13 +24,14 @@
         #map {
             width: 100%;
             height: 100vh;
+            background: #1e1e1e;
         }
         .info-panel {
             position: absolute;
             top: 15px;
             right: 15px;
             z-index: 1000;
-            background: rgba(20, 20, 20, 0.88);
+            background: rgba(20, 20, 20, 0.9);
             backdrop-filter: blur(6px);
             padding: 12px 18px;
             border-radius: 8px;
@@ -70,7 +71,7 @@
         <div id="status" class="status-loading">⏳ در حال آماده‌سازی شبکه و داده‌ها...</div>
         <div id="cell-info" style="margin-top: 8px; display: none;">
             <b>مشخصات سلول انتخابی:</b><br>
-            شاخص خطر: <span id="fwi-val">-</span><br>
+            شاخص خطر: <span id="fwi-val" style="font-weight:bold; color:#ff9800;">-</span><br>
             دما: <span id="temp-val">-</span> °C | رطوبت: <span id="rh-val">-</span>%<br>
             سرعت باد: <span id="wind-val">-</span> km/h | بارندگی: <span id="rain-val">-</span> mm
         </div>
@@ -88,16 +89,16 @@
     <div id="map"></div>
 
     <script>
-        // ۱. مقداردهی اولیه نقشه روی استان فارس
+        // ۱. مقداردهی نقشه روی استان فارس
         const map = L.map('map').setView([29.2, 53.2], 7);
 
-        // بیس‌مپ تیره (CartoDB DarkMatter)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; CartoDB & OpenStreetMap',
+        // نقشه پایه استاندارد OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 18
         }).addTo(map);
 
-        // ۲. تابع محاسبه رنگ بر اساس مقدار FWI
+        // ۲. محاسبه رنگ FWI
         function getFWIColor(fwi) {
             return fwi > 45 ? '#7b1fa2' :
                    fwi > 35 ? '#d32f2f' :
@@ -106,13 +107,13 @@
                               '#2e7d32';
         }
 
-        // ۳. اندازه سلول شبکه — استاندارد اولیه خودِ داده (۰.۱۸ درجه)
+        // ۳. گام شبکه بر اساس استاندارد اولیه (۰.۱۸ درجه)
         const step = 0.18;
 
         async function initApp() {
             const statusEl = document.getElementById('status');
             try {
-                // بارگذاری مرز استان (fars.geojson و در نبودش fars_districts.geojson)
+                // بارگذاری مرز استان
                 let boundaryData;
                 try {
                     const res = await fetch('fars.geojson');
@@ -123,34 +124,29 @@
                     boundaryData = await fallbackRes.json();
                 }
 
-                // رسم خطوط محدوده استان
+                // رسم مرز استان
                 L.geoJSON(boundaryData, {
-                    style: { color: '#00e5ff', weight: 1.5, fillOpacity: 0.05 }
+                    style: { color: '#00e5ff', weight: 2, fillOpacity: 0.03 }
                 }).addTo(map);
 
-                // لایه مناطق حفاظت‌شده (خط‌چین سبز)
+                // بارگذاری مناطق حفاظت‌شده و شکارممنوع
                 fetch('protected_areas.geojson').then(r => r.json()).then(data => {
-                    L.geoJSON(data, {
-                        style: { color: '#00e676', weight: 1.5, dashArray: '4, 4', fillOpacity: 0.1 }
-                    }).addTo(map);
+                    L.geoJSON(data, { style: { color: '#2e7d32', weight: 1.5, dashArray: '4, 4', fillOpacity: 0.15 } }).addTo(map);
                 }).catch(() => {});
 
-                // لایه مناطق شکارممنوع (خط‌چین زرد)
                 fetch('hunting_banned.geojson').then(r => r.json()).then(data => {
-                    L.geoJSON(data, {
-                        style: { color: '#ffea00', weight: 1.5, dashArray: '2, 4', fillOpacity: 0.08 }
-                    }).addTo(map);
+                    L.geoJSON(data, { style: { color: '#fbc02d', weight: 1.5, dashArray: '2, 4', fillOpacity: 0.12 } }).addTo(map);
                 }).catch(() => {});
 
-                statusEl.innerText = '⚙️ در حال محاسبه شبکه مختصات...';
+                statusEl.innerText = '⚙️ در حال ساخت شبکه سلول‌ها...';
 
-                const boundaryFeatures = boundaryData.features ? boundaryData : turf.featureCollection([boundaryData]);
+                // آماده‌سازی هندسه استان برای محاسبه سریع
+                const simplifiedBoundary = turf.simplify(boundaryData, { tolerance: 0.01, highQuality: false });
+                const boundaryFeatures = simplifiedBoundary.features ? simplifiedBoundary.features : [simplifiedBoundary];
 
-                // بازه گسترده مختصات — پوشش کامل تمام مرزهای استان
-                const minLat = 26.8;
-                const maxLat = 31.9;
-                const minLon = 50.3;
-                const maxLon = 55.8;
+                // محدوده جغرافیایی استان
+                const minLat = 26.8, maxLat = 31.9;
+                const minLon = 50.3, maxLon = 55.8;
 
                 const gridPolygons = [];
 
@@ -159,9 +155,8 @@
                         const cellBBox = [lon, lat, lon + step, lat + step];
                         const cellPoly = turf.bboxPolygon(cellBBox);
 
-                        // فیلتر تقاطع سلول با مرز استان
                         let intersects = false;
-                        for (let f of boundaryFeatures.features) {
+                        for (let f of boundaryFeatures) {
                             if (turf.booleanIntersects(cellPoly, f)) {
                                 intersects = true;
                                 break;
@@ -171,8 +166,8 @@
                         if (intersects) {
                             gridPolygons.push({
                                 poly: cellPoly,
-                                centerLat: lat + step / 2,
-                                centerLon: lon + step / 2
+                                centerLat: +(lat + step / 2).toFixed(4),
+                                centerLon: +(lon + step / 2).toFixed(4)
                             });
                         }
                     }
@@ -182,7 +177,7 @@
 
                 const gridLayerGroup = L.layerGroup().addTo(map);
 
-                // دریافت داده‌های هواشناسی و رسم سلول‌ها
+                // دریافت هواشناسی و رسم سلول‌ها
                 for (let item of gridPolygons) {
                     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${item.centerLat}&longitude=${item.centerLon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation`;
 
@@ -190,10 +185,10 @@
                         .then(res => res.json())
                         .then(wData => {
                             const cur = wData.current || {};
-                            const temp = cur.temperature_2m || 0;
-                            const rh = cur.relative_humidity_2m || 0;
-                            const wind = cur.wind_speed_10m || 0;
-                            const rain = cur.precipitation || 0;
+                            const temp = cur.temperature_2m ?? 0;
+                            const rh = cur.relative_humidity_2m ?? 0;
+                            const wind = cur.wind_speed_10m ?? 0;
+                            const rain = cur.precipitation ?? 0;
 
                             const fwi = Math.max(0, (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2));
                             const color = getFWIColor(fwi);
@@ -201,9 +196,9 @@
                             const leafletPolygon = L.geoJSON(item.poly, {
                                 style: {
                                     fillColor: color,
-                                    fillOpacity: 0.65,
-                                    weight: 0.8,
-                                    color: '#222'
+                                    fillOpacity: 0.6,
+                                    weight: 0.7,
+                                    color: '#333'
                                 }
                             });
 
@@ -225,7 +220,7 @@
 
             } catch (err) {
                 console.error(err);
-                statusEl.innerText = '⚠️ خطا در بارگذاری لایه‌ها یا نقشه.';
+                statusEl.innerText = '⚠️ خطا در بارگذاری سامانه.';
             }
         }
 
