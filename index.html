@@ -17,56 +17,43 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-    /* هدر قرمز یکپارچه */
+    /* هدر قرمز */
     header {
       background: #b91c1c;
-      color: #ffffff;
       padding: 10px 20px;
       border-bottom: 2px solid #991b1b;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-      z-index: 1000;
-      gap: 5px;
       text-align: center;
-    }
-    .header-title {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 1000;
       gap: 3px;
     }
-    .header-title h1 { 
-      font-size: 1.15rem; 
-      color: #ffffff; 
-      font-weight: 800; 
-    }
-    .header-title p { 
-      font-size: 0.8rem; 
-      color: #fee2e2; 
-    }
+    .header-title h1 { font-size: 1.15rem; color: #ffffff; font-weight: bold; }
+    .header-title p { font-size: 0.78rem; color: #fee2e2; margin-top: 2px; }
 
-    /* تابلو تاریخ زیر تیتر */
+    /* تابلو تاریخ زیر عنوان */
     .badge {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.25);
       color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      padding: 4px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 3px 14px;
       border-radius: 20px;
       font-weight: bold;
-      font-size: 0.82rem;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      font-size: 0.8rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       white-space: nowrap;
-      margin-top: 3px;
+      margin-top: 4px;
+      display: inline-block;
     }
 
-    /* دکمه‌های چسبیده به بخش نقشه‌ها و لایه‌ها */
+    /* جایگاه دکمه‌ها در کنار بخش لایه‌ها */
     .map-action-buttons {
       position: absolute;
       top: 10px;
-      left: 270px;
+      left: 265px;
       display: flex;
       gap: 8px;
       z-index: 999;
@@ -83,14 +70,46 @@
       font-weight: bold;
       font-size: 0.83rem;
       font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s;
       white-space: nowrap;
     }
-    .report-btn:hover { background: #991b1b; transform: translateY(-1px); }
+    .report-btn:hover { background: #991b1b; }
+    .report-btn:disabled { background: #9ca3af; cursor: wait; }
+
+    .guide-btn {
+      background: #0284c7;
+      color: #ffffff;
+      border: 1px solid #0369a1;
+      cursor: pointer;
+      padding: 7px 65px;
+      display: flex;
+      gap: 8px;
+      z-index: 999;
+      align-items: center;
+    }
+
+    .report-btn {
+      background: #b91c1c;
+      color: #ffffff;
+      border: 1px solid #991b1b;
+      cursor: pointer;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.83rem;
+      font-family: 'Vazirmatn', sans-serif;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .report-btn:hover { background: #991b1b; }
     .report-btn:disabled { background: #9ca3af; cursor: wait; }
 
     .guide-btn {
@@ -103,34 +122,10 @@
       font-weight: bold;
       font-size: 0.83rem;
       font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: background 0.2s, transform 0.1s;
-      white-space: nowrap;
-    }
-    .guide-btn:hover { background: #0369a1; transform: translateY(-1px); }
-
-    #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
-
-    /* راهنمای نقشه */
-    .legend {
-      position: absolute;
-      bottom: 25px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 12px 16px;
-      border-radius: 10px;
-      z-index: 999;
-      font-size: 0.82rem;
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      line-height: 1.8;
-      max-width: 320px;
-    }
-    .legend-title { font-weight: bold; margin-bottom: 5px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-    .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
+      gap:dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
 
     /* پاپ‌آپ */
     .leaflet-popup-content-wrapper {
@@ -261,7 +256,7 @@
 </header>
 
 <div style="position: relative; flex: 1;">
-  <!-- دکمه‌های چسبیده به بخش کنترل لایه‌ها -->
+  <!-- دکمه‌ها چسبیده به بخش لایه‌ها -->
   <div class="map-action-buttons">
     <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
     <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
@@ -458,14 +453,14 @@
         <div class="stat-row"><span class="stat-label">🌡️ بیشینه دما:</span><span class="stat-val">${temp} °C</span></div>
         <div class="stat-row"><span class="stat-label">💧 رطوبت نسبی:</span><span class="stat-val">${rh}%</span></div>
         <div class="stat-row"><span class="stat-label">💨 سرعت باد:</span><span class="stat-val">${wind} km/h</span></div>
-        <div class="stat-row"><span class="stat-label">🌧️ بارش ۲۴ ساعته:</span><span class res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+        <div class="stat-row"><span class="stat-label">🌧️ بارش ۲۴ ساعته:</span><span class="stat-val">${rain} mm</span></div>`;
+
+      L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
+    });
   }
 
-  async function init() {
-    try {
-       res = await fetch(url);
+  async function loadGeoJson(url) {
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   }
@@ -506,7 +501,7 @@
         }).addTo(huntingLayer);
       } catch (e) { console.warn('hunting_banned:', e); }
 
-      // ۳. شهرستان‌ها فقط برای گزارش
+      // ۳. ذخیره شهرستان‌ها فقط برای گزارش
       try {
         const districtsData = await loadGeoJson('fars_districts.geojson');
         const feats = districtsData?.features || [districtsData];
