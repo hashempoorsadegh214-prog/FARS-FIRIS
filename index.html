@@ -1,202 +1,913 @@
+```html
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پهنه‌بندی شاخص FWI استان فارس (فردا)</title>
-    
-    <!-- کتابخانه نقشه Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <title>پهنه‌بندی شاخص FWI استان فارس</title>
+
+    <!-- Leaflet -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- فونت وزیر متن -->
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
+
+    <!-- Vazirmatn -->
+    <link
+        href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+        rel="stylesheet"
+    />
 
     <style>
-        * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
-        body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        header { 
-            background: #1e293b; 
-            padding: 12px 20px; 
-            border-bottom: 1px solid #334155; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            z-index: 1000; 
-        }
-        .header-title h1 { font-size: 1.1rem; color: #f97316; }
-        .header-title p { font-size: 0.75rem; color: #94a3b8; }
-        
-        .badge { 
-            background: #ef4444; 
-            color: white; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-weight: bold; 
-            font-size: 0.85rem;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Vazirmatn", sans-serif;
         }
 
-        #map { flex: 1; height: 100%; background: #0f172a; }
-
-        .legend { 
-            position: absolute; 
-            bottom: 20px; 
-            right: 20px; 
-            background: rgba(15,23,42,0.95); 
-            padding: 12px; 
-            border-radius: 8px; 
-            z-index: 999; 
-            font-size: 0.8rem; 
-            border: 1px solid #334155; 
-            color: #fff;
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            height: 100vh;
+            overflow: hidden;
         }
-        .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-left: 6px; }
 
-        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; direction: rtl; }
-        .leaflet-popup-tip { background: #1e293b; }
+        header {
+            height: 76px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            position: relative;
+            z-index: 2000;
+        }
 
+        .header-title h1 {
+            font-size: 1.05rem;
+            color: #f97316;
+            margin-bottom: 4px;
+        }
+
+        .header-title p {
+            font-size: 0.72rem;
+            color: #94a3b8;
+        }
+
+        .badge {
+            background: #ef4444;
+            color: white;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+            white-space: nowrap;
+        }
+
+        #map-wrapper {
+            position: relative;
+            height: calc(100vh - 76px);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+        }
+
+        /* Loading */
         #loading-progress {
             position: absolute;
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.9);
+            z-index: 1500;
+
+            background: rgba(15, 23, 42, 0.95);
             border: 1px solid #38bdf8;
             color: #38bdf8;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            z-index: 1000;
+
+            padding: 7px 18px;
+            border-radius: 22px;
+
+            font-size: 0.8rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            white-space: nowrap;
+        }
+
+        /* Error */
+        #error-box {
+            display: none;
+
+            position: absolute;
+            top: 65px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            z-index: 1500;
+
+            background: rgba(127, 29, 29, 0.96);
+            color: #fff;
+
+            padding: 10px 18px;
+            border-radius: 8px;
+
+            border: 1px solid #ef4444;
+
+            font-size: 0.78rem;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+
+            z-index: 1500;
+
+            background: rgba(15, 23, 42, 0.96);
+
+            padding: 13px 15px;
+
+            border-radius: 9px;
+
+            border: 1px solid #334155;
+
+            color: white;
+
+            font-size: 0.78rem;
+
+            min-width: 180px;
+
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+
+        .legend-title {
+            font-weight: bold;
+            color: #f8fafc;
+            margin-bottom: 7px;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+
+        .dot {
+            width: 13px;
+            height: 13px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-left: 7px;
+        }
+
+        /* Popup */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            color: #fff;
+            border-radius: 10px;
+        }
+
+        .leaflet-popup-tip {
+            background: #1e293b;
+        }
+
+        .popup {
+            min-width: 220px;
+            direction: rtl;
+        }
+
+        .popup h3 {
+            color: #38bdf8;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .popup .fwi-value {
+            font-size: 1.05rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .popup-row {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #334155;
+            padding: 5px 0;
+            font-size: 0.78rem;
+        }
+
+        .popup-label {
+            color: #94a3b8;
+        }
+
+        .popup-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        /* Mobile */
+        @media (max-width: 700px) {
+
+            header {
+                height: auto;
+                min-height: 82px;
+                padding: 9px 12px;
+                gap: 8px;
+            }
+
+            .header-title h1 {
+                font-size: 0.82rem;
+            }
+
+            .header-title p {
+                font-size: 0.6rem;
+            }
+
+            .badge {
+                font-size: 0.65rem;
+                padding: 6px 9px;
+            }
+
+            #map-wrapper {
+                height: calc(100vh - 82px);
+            }
+
+            .legend {
+                right: 10px;
+                bottom: 10px;
+                font-size: 0.68rem;
+                min-width: 150px;
+            }
+
+            #loading-progress {
+                font-size: 0.7rem;
+                max-width: 90%;
+                text-align: center;
+            }
         }
     </style>
 </head>
+
 <body>
 
-    <header>
-        <div class="header-title">
-            <h1>سامانه پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس</h1>
-            <p>پوشش کامل مساحتی استان | شبکه ۱۵ کیلومتری | داده‌های پیش‌بینی فردا (Open-Meteo)</p>
-        </div>
-        <div class="badge">
-            📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
-        </div>
-    </header>
+<header>
 
-    <div style="position: relative; flex: 1;">
-        <div id="loading-progress">در حال محاسبه و پردازش سلول‌های شبکه‌ای استان فارس...</div>
-        <div id="map"></div>
-        <div class="legend">
-            <b>سطوح خطر FWI (پهنه‌ای)</b><br>
-            <div><span class="dot" style="background:#22c55e;"></span> بسیار کم (کمتر از ۵)</div>
-            <div><span class="dot" style="background:#eab308;"></span> متوسط (۵ تا ۱۵)</div>
-            <div><span class="dot" style="background:#f97316;"></span> زیاد (۱۵ تا ۲۵)</div>
-            <div><span class="dot" style="background:#ef4444;"></span> بسیار زیاد (۲۵ تا ۳۵)</div>
-            <div><span class="dot" style="background:#7f1d1d;"></span> بحرانی (بیشتر از ۳۵)</div>
-        </div>
+    <div class="header-title">
+        <h1>
+            سامانه پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس
+        </h1>
+
+        <p>
+            داده‌های پیش‌بینی هواشناسی Open-Meteo | شبکه سلولی استان فارس
+        </p>
     </div>
 
-    <script>
-        // ۱. تنظیم تاریخ فردا
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
-            weekday: 'long', month: 'long', day: 'numeric'
-        });
+    <div class="badge">
+        📅 پیش‌بینی فردا:
+        <span id="tomorrow-date">در حال دریافت...</span>
+    </div>
 
-        // ۲. راه‌اندازی نقشه مرکزشده روی استان فارس
-        const map = L.map('map').setView([29.3, 53.2], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+</header>
+
+
+<div id="map-wrapper">
+
+    <div id="loading-progress">
+        در حال دریافت داده‌های هواشناسی...
+    </div>
+
+    <div id="error-box"></div>
+
+    <div id="map"></div>
+
+
+    <div class="legend">
+
+        <div class="legend-title">
+            سطوح خطر FWI
+        </div>
+
+        <div class="legend-row">
+            <span class="dot" style="background:#22c55e;"></span>
+            بسیار کم — کمتر از ۵
+        </div>
+
+        <div class="legend-row">
+            <span class="dot" style="background:#eab308;"></span>
+            متوسط — ۵ تا ۱۵
+        </div>
+
+        <div class="legend-row">
+            <span class="dot" style="background:#f97316;"></span>
+            زیاد — ۱۵ تا ۲۵
+        </div>
+
+        <div class="legend-row">
+            <span class="dot" style="background:#ef4444;"></span>
+            بسیار زیاد — ۲۵ تا ۳۵
+        </div>
+
+        <div class="legend-row">
+            <span class="dot" style="background:#7f1d1d;"></span>
+            بحرانی — بیشتر از ۳۵
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /* =========================================================
+       1. تاریخ فردا
+       ========================================================= */
+
+    function setTomorrowDate() {
+
+        const today = new Date();
+
+        const tomorrow = new Date(today);
+
+        tomorrow.setDate(today.getDate() + 1);
+
+        const dateText =
+            tomorrow.toLocaleDateString("fa-IR", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            });
+
+        document.getElementById("tomorrow-date").innerText = dateText;
+    }
+
+    setTomorrowDate();
+
+
+    /* =========================================================
+       2. نقشه
+       ========================================================= */
+
+    const map = L.map("map", {
+        zoomControl: true
+    }).setView([29.3, 53.2], 7);
+
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
             maxZoom: 18,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
 
-        // رنگ‌بندی بر اساس FWI
-        function getColor(fwi) {
-            if (fwi < 5) return '#22c55e';
-            if (fwi < 15) return '#eab308';
-            if (fwi < 25) return '#f97316';
-            if (fwi < 35) return '#ef4444';
-            return '#7f1d1d';
+            attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+        }
+    ).addTo(map);
+
+
+    /* =========================================================
+       3. رنگ‌بندی FWI
+       ========================================================= */
+
+    function getColor(fwi) {
+
+        if (fwi < 5)
+            return "#22c55e";
+
+        if (fwi < 15)
+            return "#eab308";
+
+        if (fwi < 25)
+            return "#f97316";
+
+        if (fwi < 35)
+            return "#ef4444";
+
+        return "#7f1d1d";
+    }
+
+
+    function getRiskName(fwi) {
+
+        if (fwi < 5)
+            return "بسیار کم";
+
+        if (fwi < 15)
+            return "متوسط";
+
+        if (fwi < 25)
+            return "زیاد";
+
+        if (fwi < 35)
+            return "بسیار زیاد";
+
+        return "بحرانی";
+    }
+
+
+    /* =========================================================
+       4. محدوده شبکه استان فارس
+       ========================================================= */
+
+    const step = 0.18;
+
+    const minLat = 27.3;
+    const maxLat = 31.4;
+
+    const minLon = 50.6;
+    const maxLon = 55.4;
+
+
+    const gridCells = [];
+
+
+    for (
+        let lat = minLat;
+        lat < maxLat;
+        lat += step
+    ) {
+
+        for (
+            let lon = minLon;
+            lon < maxLon;
+            lon += step
+        ) {
+
+            const latCenter =
+                lat + (step / 2);
+
+            const lonCenter =
+                lon + (step / 2);
+
+
+            gridCells.push({
+
+                latCenter:
+                    Number(latCenter.toFixed(4)),
+
+                lonCenter:
+                    Number(lonCenter.toFixed(4)),
+
+                bounds: [
+                    [lat, lon],
+                    [lat + step, lon + step]
+                ]
+
+            });
+
         }
 
-        // ۳. ساخت شبکه سلولی (Grid Mesh) روی محدوده استان فارس
-        // گام جغرافیایی 0.18 درجه ~ حدود 18 کیلومتر
-        const step = 0.18;
-        const minLat = 27.3, maxLat = 31.4;
-        const minLon = 50.6, maxLon = 55.4;
+    }
 
-        const gridCells = [];
-        for (let lat = minLat; lat <= maxLat; lat += step) {
-            for (let lon = minLon; lon <= maxLon; lon += step) {
-                gridCells.push({
-                    latCenter: parseFloat((lat + step / 2).toFixed(4)),
-                    lonCenter: parseFloat((lon + step / 2).toFixed(4)),
-                    bounds: [
-                        [lat, lon],
-                        [lat + step, lon + step]
-                    ]
-                });
-            }
+
+    console.log(
+        "تعداد سلول‌ها:",
+        gridCells.length
+    );
+
+
+    /* =========================================================
+       5. کنترل خطا
+       ========================================================= */
+
+    let errorCount = 0;
+
+
+    function showError(message) {
+
+        const box =
+            document.getElementById("error-box");
+
+        box.style.display = "block";
+
+        box.innerText = message;
+    }
+
+
+    /* =========================================================
+       6. دریافت داده Open-Meteo
+       ========================================================= */
+
+    async function getWeather(cell) {
+
+        const url =
+            "https://api.open-meteo.com/v1/forecast" +
+
+            "?latitude=" +
+            encodeURIComponent(cell.latCenter) +
+
+            "&longitude=" +
+            encodeURIComponent(cell.lonCenter) +
+
+            "&daily=" +
+            "temperature_2m_max," +
+            "relative_humidity_2m_mean," +
+            "wind_speed_10m_max," +
+            "precipitation_sum" +
+
+            "&timezone=Asia%2FTehran" +
+
+            "&forecast_days=2";
+
+
+        const response =
+            await fetch(url, {
+                method: "GET",
+                cache: "no-store"
+            });
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "HTTP " +
+                response.status
+            );
         }
 
-        // ۴. فراخوانی دسته‌ای داده‌ها برای پردازش سریع
-        async function loadGridFWI() {
-            const batchSize = 10;
-            let completed = 0;
-            const progressEl = document.getElementById('loading-progress');
 
-            for (let i = 0; i < gridCells.length; i += batchSize) {
-                const batch = gridCells.slice(i, i + batchSize);
-                
-                await Promise.all(batch.map(async (cell) => {
-                    try {
-                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${cell.latCenter}&longitude=${cell.lonCenter}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-                        const res = await fetch(url);
-                        const data = await res.json();
+        const data =
+            await response.json();
 
-                        const temp = data.daily.temperature_2m_max[1];
-                        const rh = data.daily.relative_humidity_2m_mean[1];
-                        const wind = data.daily.wind_speed_10m_max[1];
-                        const rain = data.daily.precipitation_sum[1];
 
-                        // فرمول محاسبه FWI
-                        let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
-                        if (fwi < 0) fwi = 0;
+        if (
+            !data.daily ||
+            !data.daily.time ||
+            data.daily.time.length < 2
+        ) {
 
-                        const color = getColor(fwi);
+            throw new Error(
+                "داده روز دوم دریافت نشد"
+            );
+        }
 
-                        // رسم مستطیل پهنه‌ای با شفافیت برای شبیه‌سازی Heatmap
-                        const rect = L.rectangle(cell.bounds, {
-                            color: color,
-                            weight: 0.5,
-                            fillColor: color,
-                            fillOpacity: 0.55
-                        }).addTo(map);
 
-                        rect.bindPopup(`
-                            <div style="padding: 4px;">
-                                <h4 style="color:#38bdf8;">موقعیت سلول: ${cell.latCenter}, ${cell.lonCenter}</h4>
-                                <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
-                                <hr style="border-color:#334155; margin:6px 0;">
-                                <p style="font-size:0.8rem;">🌡️ دما: ${temp} °C</p>
-                                <p style="font-size:0.8rem;">💧 رطوبت: ${rh}%</p>
-                                <p style="font-size:0.8rem;">💨 سرعت باد: ${wind} km/h</p>
-                            </div>
-                        `);
-                    } catch (e) {
-                        console.error("خطا در فراخوانی سلول", e);
+        return {
+
+            temp:
+                data.daily.temperature_2m_max[1],
+
+            rh:
+                data.daily.relative_humidity_2m_mean[1],
+
+            wind:
+                data.daily.wind_speed_10m_max[1],
+
+            rain:
+                data.daily.precipitation_sum[1],
+
+            date:
+                data.daily.time[1]
+
+        };
+
+    }
+
+
+    /* =========================================================
+       7. محاسبه شاخص ساده FWI
+       ========================================================= */
+
+    function calculateFWI(
+        temp,
+        rh,
+        wind,
+        rain
+    ) {
+
+        let fwi =
+            (temp * 0.4) +
+            (wind * 0.3) -
+            (rh * 0.15) -
+            (rain * 2);
+
+
+        if (fwi < 0)
+            fwi = 0;
+
+
+        return fwi;
+    }
+
+
+    /* =========================================================
+       8. رسم سلول
+       ========================================================= */
+
+    function drawCell(
+        cell,
+        weather
+    ) {
+
+        const fwi =
+            calculateFWI(
+                weather.temp,
+                weather.rh,
+                weather.wind,
+                weather.rain
+            );
+
+
+        const color =
+            getColor(fwi);
+
+
+        const risk =
+            getRiskName(fwi);
+
+
+        const rectangle =
+            L.rectangle(
+                cell.bounds,
+                {
+                    color: color,
+                    weight: 0.6,
+                    opacity: 0.8,
+                    fillColor: color,
+                    fillOpacity: 0.48
+                }
+            ).addTo(map);
+
+
+        rectangle.bindPopup(`
+
+            <div class="popup">
+
+                <h3>
+                    🔥 وضعیت سلول پیش‌بینی
+                </h3>
+
+                <div class="fwi-value"
+                     style="color:${color};">
+
+                    FWI:
+                    ${fwi.toFixed(1)}
+
+                    <br>
+
+                    <span style="
+                        color:#ffffff;
+                        font-size:0.82rem;
+                    ">
+                        سطح خطر: ${risk}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        تاریخ
+                    </span>
+
+                    <span class="popup-value">
+                        ${weather.date}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        دمای بیشینه
+                    </span>
+
+                    <span class="popup-value">
+                        ${weather.temp ?? "-"} °C
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        رطوبت نسبی
+                    </span>
+
+                    <span class="popup-value">
+                        ${weather.rh ?? "-"} %
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        سرعت باد
+                    </span>
+
+                    <span class="popup-value">
+                        ${weather.wind ?? "-"} km/h
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        بارش
+                    </span>
+
+                    <span class="popup-value">
+                        ${weather.rain ?? "-"} mm
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        مختصات
+                    </span>
+
+                    <span class="popup-value">
+                        ${cell.latCenter},
+                        ${cell.lonCenter}
+                    </span>
+
+                </div>
+
+            </div>
+
+        `);
+
+    }
+
+
+    /* =========================================================
+       9. پردازش شبکه
+       ========================================================= */
+
+    async function loadGridFWI() {
+
+        const progress =
+            document.getElementById(
+                "loading-progress"
+            );
+
+
+        /*
+         * تعداد درخواست همزمان
+         *
+         * عمداً پایین نگه داشته شده تا
+         * Open-Meteo تحت فشار قرار نگیرد.
+         */
+
+        const batchSize = 6;
+
+
+        let completed = 0;
+
+
+        const total =
+            gridCells.length;
+
+
+        for (
+            let i = 0;
+            i < total;
+            i += batchSize
+        ) {
+
+            const batch =
+                gridCells.slice(
+                    i,
+                    i + batchSize
+                );
+
+
+            await Promise.all(
+
+                batch.map(
+                    async (cell) => {
+
+                        try {
+
+                            const weather =
+                                await getWeather(
+                                    cell
+                                );
+
+
+                            drawCell(
+                                cell,
+                                weather
+                            );
+
+
+                        } catch (error) {
+
+                            errorCount++;
+
+                            console.error(
+                                "خطای سلول:",
+                                cell,
+                                error
+                            );
+
+                        }
+
                     }
-                }));
+                )
 
-                completed += batch.length;
-                progressEl.innerText = `در حال دریافت پهنه‌ها: ${Math.round((completed / gridCells.length) * 100)}%`;
-            }
+            );
 
-            progressEl.style.display = 'none';
+
+            completed += batch.length;
+
+
+            const percent =
+                Math.round(
+                    (completed / total) * 100
+                );
+
+
+            progress.innerText =
+                `در حال دریافت داده‌های هواشناسی: ${percent}%`;
         }
 
-        loadGridFWI();
-    </script>
+
+        /* =====================================================
+           10. پایان پردازش
+           ===================================================== */
+
+        if (errorCount === 0) {
+
+            progress.innerText =
+                "✓ تمام داده‌های هواشناسی دریافت شد";
+
+
+            setTimeout(
+                () => {
+                    progress.style.display =
+                        "none";
+                },
+                1500
+            );
+
+        } else {
+
+            progress.innerText =
+                `پردازش تمام شد؛ ${errorCount} سلول خطا داشت.`;
+
+            showError(
+                `دریافت داده برای ${errorCount} سلول با خطا مواجه شد. جزئیات را در Console مرورگر ببینید.`
+            );
+
+        }
+
+    }
+
+
+    /* =========================================================
+       11. شروع
+       ========================================================= */
+
+    loadGridFWI()
+        .catch(
+            (error) => {
+
+                console.error(
+                    "خطای کلی:",
+                    error
+                );
+
+
+                const progress =
+                    document.getElementById(
+                        "loading-progress"
+                    );
+
+
+                progress.innerText =
+                    "خطا در دریافت داده‌های هواشناسی";
+
+
+                showError(
+                    "ارتباط با سرویس Open-Meteo برقرار نشد. Console مرورگر را بررسی کنید."
+                );
+
+            }
+        );
+
+</script>
+
 </body>
 </html>
+```
