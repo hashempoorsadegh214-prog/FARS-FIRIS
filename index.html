@@ -28,7 +28,6 @@
             color: #f3f4f6;
         }
 
-        /* هدر اصلی */
         header {
             background-color: #b91c1c;
             color: #ffffff;
@@ -74,7 +73,6 @@
             100% { transform: scale(0.95); opacity: 0.8; }
         }
 
-        /* نقشه */
         #map {
             flex: 1;
             width: 100%;
@@ -82,7 +80,6 @@
             background-color: #1e293b;
         }
 
-        /* لودینگ */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -114,49 +111,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* راهنمای نقشه (Legend) */
-        .fwi-legend {
-            background: rgba(17, 24, 39, 0.9);
-            border: 1px solid #374151;
-            padding: 12px 14px;
-            border-radius: 8px;
-            color: #f3f4f6;
-            font-size: 0.8rem;
-            line-height: 1.6;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            max-width: 210px;
-        }
-
-        .fwi-legend h4 {
-            margin-bottom: 8px;
-            font-size: 0.85rem;
-            border-bottom: 1px solid #4b5563;
-            padding-bottom: 4px;
-            text-align: center;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-
-        .legend-color {
-            width: 48px;
-            border: 4px solid #374151;
-            border-top: 4px solid #ef4444;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 15px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* راهنمای نقشه (Legend) */
         .fwi-legend {
             background: rgba(17, 24, 39, 0.9);
             border: 1px solid #374151;
@@ -195,9 +149,45 @@
 </head>
 <body>
 
+    <header>
+        <div class="header-title">
+            <h1>سامانه پایش آنلاین حریق و پهنه‌بندی FWI استان فارس</h1>
+        </div>
+        <div class="header-status">
+            <span class="pulse-dot"></span>
+            <span>وضعیت سامانه: آنلاین</span>
+        </div>
+    </header>
+
     <div id="loading-overlay">
         <div class="spinner"></div>
-        <div id="loading-text" style="Sat = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        <div id="loading-text" style="color: #f3f4f6; font-size: 0.95rem;">در حال آماده‌سازی نقشه و لایه‌ها...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ۱. ساخت نقشه پایه روی مرکز استان فارس
+        const map = L.map('map', {
+            center: [29.61031, 52.53113],
+            zoom: 7,
+            zoomControl: true
+        });
+
+        // ۲. لایه‌های نقشه
+        const osmDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+
+        const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             attribution: '&copy; Google Maps'
         });
 
@@ -206,26 +196,17 @@
         const protectedLayer = L.layerGroup().addTo(map);
         const huntingLayer = L.layerGroup().addTo(map);
 
-        // رنگ‌بندی و سطوح خطر FWI
+        // توابع رنگ‌بندی و سطوح خطر FWI
         function getFWIColor(fwi) {
-            if (fwi >= 38) return '#7f1d1d'; // بحرانی (قهوه‌ای تیره/قرمز خیلی تیره)
-            if (fwi >= 25) return '#ef4444'; // خیلی زیاد (قرمز)
-            if (fwi >= 17) return '#f97316'; // زیاد (نارنجی)
-            if (fwi >= 8)  return '#eab308'; // متوسط (زرد)
-            if (fwi >= 2)  return '#84cc16'; // کم (سبز روشن)
-            return '#22c55e';               // خیلی کم (سبز)
+            if (fwi >= 38) return '#7f1d1d';
+            if (fwi >= 25) return '#ef4444';
+            if (fwi >= 17) return '#f97316';
+            if (fwi >= 8)  return '#eab308';
+            if (fwi >= 2)  return '#84cc16';
+            return '#22c55e';
         }
 
-        function getFWIRiskTitle(fwi) {
-            if (fwi >= 38) return 'بحرانی (Extreme)';
-            if (fwi >= 25) return 'خیلی زیاد (Very High)';
-            if (fwi >= 17) return 'زیاد (High)';
-            if (fwi >= 8)  return 'متوسط (Moderate)';
-            if (fwi >= 2)  return 'کم (Low)';
-            return 'بسیار کم (Very Low)';
-        }
-
-        // تابع کمکی بارگذاری فایل‌های GeoJSON بدون کرش کردن
+        // تابع بارگذاری امن فایل‌های GeoJSON
         async function loadGeoJsonSafe(url, options) {
             try {
                 const response = await fetch(url);
@@ -233,17 +214,17 @@
                 const data = await response.json();
                 return L.geoJSON(data, options);
             } catch (err) {
-                console.warn(`فایل لایه ${url} در دسترس نبود یا بعداً اضافه می‌شود:`, err.message);
+                console.warn(`فایل ${url} بارگذاری نشد یا وجود ندارد:`, err.message);
                 return null;
             }
         }
 
-        // ۳. بارگذاری کلیه داده‌ها و خاتمه لودینگ
+        // ۳. اجرای بارگذاری لایه‌ها و برداشتن لودینگ
         async function initializeApp() {
             const loadingText = document.getElementById('loading-text');
 
             try {
-                // بارگذاری مرز شهرستان‌ها
+                // تقسیمات فارس
                 loadingText.innerText = 'در حال بارگذاری لایه تقسیمات استانی...';
                 const distLayer = await loadGeoJsonSafe('fars_districts.geojson', {
                     style: {
@@ -255,12 +236,12 @@
                     },
                     onEachFeature: function (feature, layer) {
                         const name = feature.properties?.name || feature.properties?.NAME || 'شهرستان فارس';
-                        layer.bindPopup(`<div style="direction:rtl; text-align:right; font-family:'Vazirmatn';"><b>${name}</b><br><span style="color:#ef4444;">خطر محاسبه‌شده حریق: متوسط تا زیاد</span></div>`);
+                        layer.bindPopup(`<div style="direction:rtl; text-align:right;"><b>${name}</b></div>`);
                     }
                 });
                 if (distLayer) distLayer.addTo(districtsLayer);
 
-                // بارگذاری مناطق حفاظت‌شده
+                // مناطق حفاظت‌شده
                 loadingText.innerText = 'در حال فراخوانی لایه‌های محیط زیست...';
                 const protLayer = await loadGeoJsonSafe('protected_areas.geojson', {
                     style: {
@@ -276,7 +257,7 @@
                 });
                 if (protLayer) protLayer.addTo(protectedLayer);
 
-                // بارگذاری مناطق شکار ممنوع
+                // مناطق شکار ممنوع
                 const huntLayer = await loadGeoJsonSafe('hunting_banned.geojson', {
                     style: {
                         color: '#f59e0b',
@@ -293,9 +274,9 @@
                 if (huntLayer) huntLayer.addTo(huntingLayer);
 
             } catch (globalErr) {
-                console.error("خطا در بارگذاری اولیه:", globalErr);
+                console.error("خطا در اجرای لایه‌ها:", globalErr);
             } finally {
-                // اطمینان قطعی از محو شدن لودینگ
+                // محو قطعی صفحه لودینگ
                 const overlay = document.getElementById('loading-overlay');
                 overlay.style.opacity = '0';
                 setTimeout(() => {
@@ -304,9 +285,9 @@
             }
         }
 
-        // کنترل لایه‌ها (سوییچ لایه‌ها در بالا-راست)
+        // کنترل لایه‌ها
         const baseMaps = {
-            "نقشه تاریک (Dark)": osmDark,
+            "نقشه تاریک": osmDark,
             "نقشه استاندارد OSM": osmStandard,
             "تصویر ماهواره‌ای": googleSat
         };
@@ -325,18 +306,18 @@
             const div = L.DomUtil.create('div', 'fwi-legend');
             div.innerHTML = `
                 <h4>شاخص خطر حریق (FWI)</h4>
-                <div class="legend-item"><span class="legend-color" style="background:#7f1d1d;"></span> بحرانی (> 38)</div>
+                <div class="legend-item"><span class="legend-color" style="background:#7f1d1d;"></span> بحرانی (&gt; 38)</div>
                 <div class="legend-item"><span class="legend-color" style="background:#ef4444;"></span> خیلی زیاد (25 - 38)</div>
                 <div class="legend-item"><span class="legend-color" style="background:#f97316;"></span> زیاد (17 - 25)</div>
                 <div class="legend-item"><span class="legend-color" style="background:#eab308;"></span> متوسط (8 - 17)</div>
                 <div class="legend-item"><span class="legend-color" style="background:#84cc16;"></span> کم (2 - 8)</div>
-                <div class="legend-item"><span class="legend-color" style="background:#22c55e;"></span> بسیار کم (< 2)</div>
+                <div class="legend-item"><span class="legend-color" style="background:#22c55e;"></span> بسیار کم (&lt; 2)</div>
             `;
             return div;
         };
         legend.addTo(map);
 
-        // اجرای برنامه
+        // شروع برنامه
         initializeApp();
     </script>
 </body>
