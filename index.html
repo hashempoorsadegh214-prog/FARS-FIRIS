@@ -15,12 +15,16 @@
             margin: 0;
             padding: 0;
             height: 100%;
+            width: 100%;
             font-family: Tahoma, 'Vazir', sans-serif;
-            background-color:-serif;
             background-color: #121212;
             color: #fff;
+            overflow: hidden;
         }
-       100%; height: 100vh; }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
         .info-panel {
             position: absolute;
             top: 15px;
@@ -76,7 +80,7 @@
         <b>راهنمای پهنه‌بندی خطر:</b>
         <div class="legend-item"><span class="legend-color" style="background: #2e7d32;"></span> کم (FWI &lt; 15)</div>
         <div class="legend-item"><span class="legend-color" style="background: #fbc02d;"></span> متوسط (15 - 25)</div>
-        <div class="legend-item"><span class="legend-color" style="background:"><span class="legend-color" style="background:25 - 35)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #f57c00;"></span> زیاد (25 - 35)</div>
         <div class="legend-item"><span class="legend-color" style="background: #d32f2f;"></span> بسیار زیاد (35 - 45)</div>
         <div class="legend-item"><span class="legend-color" style="background: #7b1fa2;"></span> بحرانی (&gt; 45)</div>
     </div>
@@ -102,7 +106,8 @@
                               '#2e7d32';
         }
 
-        // ۳. اند اندازه سلول شبکه — استاندارد اولیه خودِ پروژه        const step = 0.18; // 0.18; //.18×0.18 درجه (حدود ۱۸ کیلومتر)
+        // ۳. اندازه سلول شبکه — استاندارد اولیه خودِ داده (۰.۱۸ درجه)
+        const step = 0.18;
 
         async function initApp() {
             const statusEl = document.getElementById('status');
@@ -126,7 +131,7 @@
                 // لایه مناطق حفاظت‌شده (خط‌چین سبز)
                 fetch('protected_areas.geojson').then(r => r.json()).then(data => {
                     L.geoJSON(data, {
-                        style: { color: '#00eArray: '4, 4', fillOpacity: 0 '4, 4', fillOpacity: 0.1 }
+                        style: { color: '#00e676', weight: 1.5, dashArray: '4, 4', fillOpacity: 0.1 }
                     }).addTo(map);
                 }).catch(() => {});
 
@@ -141,7 +146,7 @@
 
                 const boundaryFeatures = boundaryData.features ? boundaryData : turf.featureCollection([boundaryData]);
 
-                // بازه گسترده مختصات — پوشش کامل لبه‌های استان بدون جاافتادگی
+                // بازه گسترده مختصات — پوشش کامل تمام مرزهای استان
                 const minLat = 26.8;
                 const maxLat = 31.9;
                 const minLon = 50.3;
@@ -154,7 +159,7 @@
                         const cellBBox = [lon, lat, lon + step, lat + step];
                         const cellPoly = turf.bboxPolygon(cellBBox);
 
-                        // برش دقیق: فقط سلول‌هایی که با مرز استان تقاطع دارند
+                        // فیلتر تقاطع سلول با مرز استان
                         let intersects = false;
                         for (let f of boundaryFeatures.features) {
                             if (turf.booleanIntersects(cellPoly, f)) {
@@ -173,23 +178,23 @@
                     }
                 }
 
-                statusEl.innerText = `📡 دریافت هواشناسی برای ${gridPolygons.length} سلول...`;
+                statusEl.innerText = `📡 دریافت داده‌ها برای ${gridPolygons.length} سلول...`;
 
                 const gridLayerGroup = L.layerGroup().addTo(map);
 
+                // دریافت داده‌های هواشناسی و رسم سلول‌ها
                 for (let item of gridPolygons) {
                     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${item.centerLat}&longitude=${item.centerLon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation`;
 
                     fetch(weatherUrl)
                         .then(res => res.json())
                         .then(wData => {
-                            const cur = wData.current;
+                            const cur = wData.current || {};
                             const temp = cur.temperature_2m || 0;
                             const rh = cur.relative_humidity_2m || 0;
                             const wind = cur.wind_speed_10m || 0;
                             const rain = cur.precipitation || 0;
 
-                            // فرمول شاخص FWI پروژه
                             const fwi = Math.max(0, (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2));
                             const color = getFWIColor(fwi);
 
