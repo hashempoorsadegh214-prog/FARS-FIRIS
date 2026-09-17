@@ -4,25 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سامانه پایش و پهنه‌بندی خطر آتش‌سوزی (FWI) استان فارس</title>
-    
+
     <!-- کتابخانه‌های Leaflet و Turf.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
-    
+
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             font-family: Tahoma, 'Vazir', sans-serif;
+            background-color:-serif;
             background-color: #121212;
             color: #fff;
         }
-        #map {
-            width: 100%;
-            height: 100vh;
-        }
+       100%; height: 100vh; }
         .info-panel {
             position: absolute;
             top: 15px;
@@ -56,21 +54,9 @@
             border: 1px solid #444;
             font-size: 12px;
         }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .legend-color {
-            width: 18px;
-            height: 14px;
-            margin-left: 8px;
-            border-radius: 3px;
-        }
-        .status-loading {
-            color: #ffeb3b;
-            font-weight: bold;
-        }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .legend-color { width: 18px; height: 14px; margin-left: 8px; border-radius: 3px; }
+        .status-loading { color: #ffeb3b; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -90,7 +76,7 @@
         <b>راهنمای پهنه‌بندی خطر:</b>
         <div class="legend-item"><span class="legend-color" style="background: #2e7d32;"></span> کم (FWI &lt; 15)</div>
         <div class="legend-item"><span class="legend-color" style="background: #fbc02d;"></span> متوسط (15 - 25)</div>
-        <div class="legend-item"><span class="legend-color" style="background: #f57c00;"></span> زیاد (25 - 35)</div>
+        <div class="legend-item"><span class="legend-color" style="background:"><span class="legend-color" style="background:25 - 35)</div>
         <div class="legend-item"><span class="legend-color" style="background: #d32f2f;"></span> بسیار زیاد (35 - 45)</div>
         <div class="legend-item"><span class="legend-color" style="background: #7b1fa2;"></span> بحرانی (&gt; 45)</div>
     </div>
@@ -116,19 +102,15 @@
                               '#2e7d32';
         }
 
-        // اندازه هر سلول شبکه (به درجه، حدود ۰.۲۵ درجه معادل تقریبی ۲۵ کیلومتر)
-        const step = 0.22;
+        // ۳. اند اندازه سلول شبکه — استاندارد اولیه خودِ پروژه        const step = 0.18; // 0.18; //.18×0.18 درجه (حدود ۱۸ کیلومتر)
 
-        // ۳. بارگذاری لایه‌ها و تولید شبکه کامل
         async function initApp() {
             const statusEl = document.getElementById('status');
             try {
-                // نام فایل مرز استانی؛ در صورت وجود fars.geojson یا fars_districts.geojson متصل می‌شود
-                const boundaryFile = 'fars.geojson'; 
+                // بارگذاری مرز استان (fars.geojson و در نبودش fars_districts.geojson)
                 let boundaryData;
-                
                 try {
-                    const res = await fetch(boundaryFile);
+                    const res = await fetch('fars.geojson');
                     if (!res.ok) throw new Error();
                     boundaryData = await res.json();
                 } catch {
@@ -137,29 +119,29 @@
                 }
 
                 // رسم خطوط محدوده استان
-                const boundaryLayer = L.geoJSON(boundaryData, {
+                L.geoJSON(boundaryData, {
                     style: { color: '#00e5ff', weight: 1.5, fillOpacity: 0.05 }
                 }).addTo(map);
 
-                // اضافه کردن لایه‌های حفاظتی و شکارممنوع در صورت موجود بودن
+                // لایه مناطق حفاظت‌شده (خط‌چین سبز)
                 fetch('protected_areas.geojson').then(r => r.json()).then(data => {
                     L.geoJSON(data, {
-                        style: { color: '#00e676', weight: 1.8, dashArray: '4, 4', fillOpacity: 0.1 }
+                        style: { color: '#00eArray: '4, 4', fillOpacity: 0 '4, 4', fillOpacity: 0.1 }
                     }).addTo(map);
                 }).catch(() => {});
 
+                // لایه مناطق شکارممنوع (خط‌چین زرد)
                 fetch('hunting_banned.geojson').then(r => r.json()).then(data => {
                     L.geoJSON(data, {
                         style: { color: '#ffea00', weight: 1.5, dashArray: '2, 4', fillOpacity: 0.08 }
                     }).addTo(map);
                 }).catch(() => {});
 
-                statusEl.innerText = '⚙️ در حال محاسبه شبکه کامل مختصات...';
+                statusEl.innerText = '⚙️ در حال محاسبه شبکه مختصات...';
 
-                // تبدیل مرز به یک پلی‌گون یا چندپلی‌گون یکپارچه برای بررسی تقاطع
                 const boundaryFeatures = boundaryData.features ? boundaryData : turf.featureCollection([boundaryData]);
 
-                // بازه گسترده و مطمئن مختصات (پوشش کامل شمال، جنوب، شرق و غرب استان بدون جاافتادگی)
+                // بازه گسترده مختصات — پوشش کامل لبه‌های استان بدون جاافتادگی
                 const minLat = 26.8;
                 const maxLat = 31.9;
                 const minLon = 50.3;
@@ -172,7 +154,7 @@
                         const cellBBox = [lon, lat, lon + step, lat + step];
                         const cellPoly = turf.bboxPolygon(cellBBox);
 
-                        // بررسی قرارگیری یا تداخل سلول با محدوده استان فارس
+                        // برش دقیق: فقط سلول‌هایی که با مرز استان تقاطع دارند
                         let intersects = false;
                         for (let f of boundaryFeatures.features) {
                             if (turf.booleanIntersects(cellPoly, f)) {
@@ -193,14 +175,11 @@
 
                 statusEl.innerText = `📡 دریافت هواشناسی برای ${gridPolygons.length} سلول...`;
 
-                // فراخوانی داده‌های هواشناسی و رسم سلول‌ها
                 const gridLayerGroup = L.layerGroup().addTo(map);
 
-                // پردازش دسته‌ای جهت عدم مسدودسازی مرورگر
                 for (let item of gridPolygons) {
-                    // دریافت پارامترهای هواشناسی از Open-Meteo
                     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${item.centerLat}&longitude=${item.centerLon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation`;
-                    
+
                     fetch(weatherUrl)
                         .then(res => res.json())
                         .then(wData => {
@@ -210,7 +189,7 @@
                             const wind = cur.wind_speed_10m || 0;
                             const rain = cur.precipitation || 0;
 
-                            // فرمول شاخص FWI
+                            // فرمول شاخص FWI پروژه
                             const fwi = Math.max(0, (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2));
                             const color = getFWIColor(fwi);
 
