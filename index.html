@@ -10,7 +10,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 
-  <!-- فونت‌های استاندارد فارسی جایگزین تیتر و نازنین -->
+  <!-- فونت‌های استاندارد فارسی -->
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/font-face.css" rel="stylesheet" />
 
@@ -38,7 +38,7 @@
       transition: filter 0.3s ease;
     }
 
-    /* فیلتر چند پرده تاریک‌تر برای حالت شب */
+    /* حالت تاریک (Night Mode) */
     body.night-mode {
       filter: brightness(0.72) contrast(1.08);
     }
@@ -79,7 +79,7 @@
       align-items: center;
     }
 
-    /* تابلو اعلام پیش‌بینی همراه با اخطار زرد چشمک‌زن */
+    /* تابلو پیش‌بینی با علامت اخطار زرد چشمک‌زن */
     .prediction-board {
       background: rgba(0, 0, 0, 0.25);
       color: #ffffff;
@@ -105,7 +105,7 @@
       50% { opacity: 0.25; transform: scale(0.92); }
     }
 
-    /* منوی کشویی هیدن با قابلیت باز شدن با موس (Hover) */
+    /* منوی کشویی Hover */
     .dropdown {
       position: relative;
       display: inline-block;
@@ -273,12 +273,9 @@
     .modal-backdrop.active { display: flex; }
     .modal-box {
       background: #ffffff;
-      width: -direction: column;
-      overflow: hidden;
-      direction: rtl;
-    }
-    .modal-head {
-      background5vh;
+      width: 100%;
+      max-width: 580px;
+      max-height: 85vh;
       border-radius: 14px;
       box-shadow: 0 20px 35px rgba(0,0,0,0.25);
       display: flex;
@@ -315,7 +312,7 @@
       color: #334155;
     }
 
-    /* طراحی گیج عقربه‌ای وضعیت حریق */
+    /* گیج عقربه‌ای */
     .gauge-wrapper {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -342,16 +339,6 @@
     .modal-body ul { padding-right: 18px; margin-bottom: 8px; }
     .modal-body li { margin-bottom: 2px; }
     .modal-body p { margin-bottom: 6px; text-align: justify; }
-    
-    .badge-inline {
-      display: inline-block;
-      padding: 1px 6px;
-      background: #e2e8f0;
-      border-radius: 5px;
-      font-size: 0.78rem;
-      font-weight: bold;
-      color: #0f172a;
-    }
   </style>
 </head>
 
@@ -409,13 +396,10 @@
       <div class="gauge-wrapper">
         <div style="font-weight:bold; font-size:0.85rem; margin-bottom:4px; color:#475569;">گیج ارزیابی وضعیت ریسک حریق</div>
         <svg class="gauge-svg" viewBox="0 0 200 105">
-          <!-- کمان رنگی طبقات خطر -->
           <path d="M 20 100 A 80 80 0 0 1 52 43" fill="none" stroke="#22c55e" stroke-width="16" />
           <path d="M 52 43 A 80 80 0 0 1 100 20" fill="none" stroke="#eab308" stroke-width="16" />
           <path d="M 100 20 A 80 80 0 0 1 148 43" fill="none" stroke="#f97316" stroke-width="16" />
           <path d="M 148 43 A 80 80 0 0 1 180 100" fill="none" stroke="#ef4444" stroke-width="16" />
-          
-          <!-- عقربه (چرخش به تناسب وضعیت خطر متوسط به بالا) -->
           <g transform="rotate(35 100 100)">
             <polygon points="97,100 103,100 100,28" fill="#1e293b" />
             <circle cx="100" cy="100" r="7" fill="#b91c1c" />
@@ -448,12 +432,10 @@
 </div>
 
 <script>
-  // تغییر حالت شب و روز
   function toggleNightMode() {
     document.body.classList.toggle('night-mode');
   }
 
-  // توابع کنترل مودال راهنما
   function openGuide() {
     document.getElementById('guideModal').classList.add('active');
   }
@@ -463,7 +445,6 @@
     }
   }
 
-  // نمایش تاریخ فردا
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
@@ -510,41 +491,33 @@
       riskPercent = 40 + Math.round(((fwi - 15) / 10) * 30);
       level = "زیاد (هشدار)"; color = "#f97316";
     } else if (fwi < 35) {
-      riskPercent = 70 + Math.round(((fwi - 25StreetMap contributors'
-  }).addTo(map);
+      riskPercent = 70 + Math.round(((fwi - 25) / 10) * 20);
+      level = "بسیار زیاد"; color = "#ef4444";
+    } else {
+      riskPercent = Math.min(100, 90 + Math.round((fwi - 35) * 2));
+      level = "بحرانی"; color = "#7f1d1d";
+    }
+    return { riskPercent, level, color };
+  }
 
-  map.createPane('gridPane');
-  map.getPane('gridPane').style.zIndex = 400;
+  function calcFWI(temp, rh, wind, rain) {
+    const raw = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2.0);
+    return Math.max(0, Number(raw.toFixed(1)));
+  }
 
-  map.createPane('boundariesPane');
-  map.getPane('boundariesPane').style.zIndex = 500;
-
-  const gridLayer = L.layerGroup().addTo(map);
-  const protectedLayer = L.layerGroup().addTo(map);
-  const huntingLayer = L.layerGroup().addTo(map);
-
-  const overlays = {
-    "🌿 مناطق چهارگانه محیط زیست": protectedLayer,
-    "🦌 مناطق شکارممنوع": huntingLayer,
-    "🔥 پهنه‌بندی شبکه‌ای FWI": gridLayer
-  };
-  L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
-
-  const regionList = [];
-
-  function getFWIDetails(fwi) {
-    let riskPercent, level, color;
-    if (fwi < 5) {
-      riskPercent = Math.round((fwi / 5) * 20);
-      level = "بسیار کم"; color = "#22c55e";
-    } else if (fwi < 15) {
-      riskPercent = 20 + Math.round(((fwi - 5) / 10) * 20);
-      level = "متوسط"; color = "#eab308";
-    } else if (fwi < 25) {
-      riskPercent = 40 + Math.round(((fwi - 15) / 10) * 30);
-      level = "زیاد (هشدار)"; color = "#f97316";
-    } else if (fwi < 35) {
-      riskPercent = 70 + Math.round(((fwi - 25 [0, 0]
+  async function fetchMeteoSingle(lat, lon) {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error();
+      return await res.json();
+    } catch {
+      return {
+        daily: {
+          temperature_2m_max: [0, 31],
+          relative_humidity_2m_mean: [0, 22],
+          wind_speed_10m_max: [0, 15],
+          precipitation_sum: [0, 0]
         }
       };
     }
@@ -718,7 +691,7 @@
     }
   }
 
-  // ================= ساخت گزارش اخطار =================
+  // ساخت گزارش اخطار
   async function generateAlertReport() {
     if (!regionList.length) { alert('هیچ منطقه‌ای شناسایی نشد.'); return; }
 
@@ -782,4 +755,21 @@
     w.document.write(`
       <!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8">
       <title>گزارش اخطار حریق - استان فارس</title>
-      <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" re
+      <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+      <style>
+        body { font-family: 'BNazanin', 'Vazirmatn', sans-serif; padding: 25px; color: #1e293b; background: #fff; font-size: 14px; }
+        h1 { font-family: 'BTitr', 'Vazirmatn', sans-serif; color: #b91c1c; font-size: 1.4rem; text-align: center; margin-bottom: 5px; }
+        .meta { text-align: center; color: #475569; font-size: 0.85rem; margin-bottom: 15px; }
+        .summary { background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 12px 18px; margin-bottom: 18px; font-size: 0.92rem; line-height: 2; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { font-family: 'BTitr', 'Vazirmatn', sans-serif; background: #b91c1c; color: #fff; padding: 9px 6px; font-weight: normal; font-size: 0.95rem; }
+        td { border: 1px solid #e2e8f0; padding: 7px 6px; text-align: center; }
+        .footer { margin-top: 20px; font-size: 0.78rem; color: #64748b; text-align: center; }
+        @media print { button { display: none; } }
+      </style></head><body>
+      <h1>⚠️ گزارش اخطار وضعیت خطر حریق مناطق استان فارس</h1>
+      <div class="meta">تاریخ گزارش: ${reportDate} | پیش‌بینی برای: ${tomorrowStr}</div>
+      <div class="summary">
+        🔥 بیشترین شاخص FWI استان: <b>${maxFwi.toFixed(1)}</b> در منطقه <b>${results[0]?.name || '-'}</b> با سطح خطر <b style="color:${results[0]?.info.color};">${results[0]?.info.level}</b><br>
+        📊 تعداد مناطق در
+        
