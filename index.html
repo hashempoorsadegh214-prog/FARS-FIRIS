@@ -62,6 +62,25 @@
     .report-btn:hover { background: #991b1b; }
     .report-btn:disabled { background: #9ca3af; cursor: wait; }
 
+    /* دکمه جدید راهنما */
+    .guide-btn {
+      background: #0284c7;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      font-family: 'Vazirmatn', sans-serif;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .guide-btn:hover { background: #0369a1; }
+
     #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
 
     /* راهنمای نقشه */
@@ -125,6 +144,70 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       z-index: 1000;
     }
+
+    /* استایل پنجره مودال راهنما */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+    .modal-backdrop.active { display: flex; }
+    .modal-box {
+      background: #ffffff;
+      width: 100%;
+      max-width: 650px;
+      max-height: 85vh;
+      border-radius: 14px;
+      box-shadow: 0 20px 30px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      direction: rtl;
+    }
+    .modal-head {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-head h2 { font-size: 1.05rem; color: #0f172a; }
+    .close-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: #64748b;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .close-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 0.86rem;
+      line-height: 1.9;
+      color: #334155;
+    }
+    .modal-body h3 {
+      font-size: 0.95rem;
+      color: #c2410c;
+      margin: 14px 0 6px 0;
+      border-right: 3px solid #c2410c;
+      padding-right: 8px;
+    }
+    .modal-body h3:first-child { margin-top: 0; }
+    .modal-body ul { padding-right: 20px; margin-bottom: 10px; }
+    .modal-body li { margin-bottom: 4px; }
+    .modal-body p { margin-bottom: 8px; text-align: justify; }
   </style>
 </head>
 
@@ -135,6 +218,7 @@
     <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و پهنه‌بندی شبکه‌ای استان</p>
   </div>
   <div class="header-actions">
+    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
     <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
     <div class="badge">📅 پیش‌بینی فردا: <span id="tomorrow-date">در حال دریافت...</span></div>
   </div>
@@ -154,7 +238,49 @@
   </div>
 </div>
 
+<!-- پنجره مودال راهنمای سامانه -->
+<div class="modal-backdrop" id="guideModal" onclick="closeGuide(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2>📘 معرفی و راهنمای کاربری سامانه</h2>
+      <button class="close-btn" onclick="closeGuide()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <h3>۱. معرفی سامانه</h3>
+      <p>
+        این سامانه به‌منظور پایش، پیش‌بینی و پهنه‌بندی خطر آتش‌سوزی در محیط‌های طبیعی استان فارس بر اساس شاخص جهانی <b>Fire Weather Index (FWI)</b> طراحی شده است.
+      </p>
+
+      <h3>۲. منابع داده‌های هواشناسی</h3>
+      <p>اطلاعات هواشناسی به‌صورت خودکار از سرویس <b>Open-Meteo</b> شامل داده‌های مدل‌های معتبر جهانی (از جمله ECMWF و GFS) دریافت می‌شود. پارامترهای اصلی شامل بیشینه دما، رطوبت نسبی، سرعت باد و میزان بارندگی ۲۴ ساعت آینده است.</p>
+
+      <h3>۳. نحوه محاسبه شاخص FWI</h3>
+      <p>شاخص خطر حریق بر اساس رابطه زیر محاسبه می‌گردد:</p>
+      <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:monospace; direction:ltr; text-align:center; margin:8px 0; border:1px dashed #cbd5e1;">
+        FWI = (T × 0.4) + (W × 0.3) - (RH × 0.15) - (Rain × 2.0)
+      </div>
+
+      <h3>۴. راهنمای لایه‌ها و امکانات</h3>
+      <ul>
+        <li><b>تعویض نقشه پایه:</b> از پنل بالای سمت چپ می‌توانید بین نقشه خیابانی OSM و نقشه ماهواره‌ای گوگل سوئیچ کنید.</li>
+        <li><b>مناطق تحت مدیریت:</b> با کلیک بر روی مناطق چهارگانه (سبز) یا شکارممنوع (بنفش)، وضعیت دقیق هواشناسی و میزان خطر حریق آن منطقه نمایش داده می‌شود.</li>
+        <li><b>گزارش اخطار مناطق:</b> با کلیک روی دکمه سرخ‌رنگ «گزارش اخطار مناطق»، فهرستی جامع از مناطق استان به ترتیب بیشترین میزان خطر حریق تولید شده و قابلیت چاپ/ذخیره PDF دارد.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <script>
+  // توابع مودال راهنما
+  function openGuide() {
+    document.getElementById('guideModal').classList.add('active');
+  }
+  function closeGuide(e) {
+    if (!e || e.target.id === 'guideModal' || e.target.classList.contains('close-btn')) {
+      document.getElementById('guideModal').classList.remove('active');
+    }
+  }
+
   // نمایش تاریخ فردا
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -167,9 +293,17 @@
 
   // ساخت نقشه
   const map = L.map('map', { minZoom: 6, maxZoom: 18 }).setView([29.2, 53.1], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+  // لایه ۱: نقشه OpenStreetMap
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
+
+  // لایه ۲: ماهواره گوگل
+  const googleSatLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    attribution: '&copy; Google Maps',
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+  });
 
   map.createPane('gridPane');
   map.getPane('gridPane').style.zIndex = 400;
@@ -181,13 +315,20 @@
   const protectedLayer = L.layerGroup().addTo(map);
   const huntingLayer = L.layerGroup().addTo(map);
 
-  // لایه تقسیمات شهرستان‌ها فقط برای گزارش ذخیره می‌شود و در پنل نقشه حذف شده است
+  // نقشه‌های پایه
+  const baseMaps = {
+    "🗺️ نقشه خیابانی OSM": osmLayer,
+    "🛰️ ماهواره گوگل": googleSatLayer
+  };
+
+  // لایه‌ها
   const overlays = {
     "🌿 مناطق چهارگانه محیط زیست": protectedLayer,
     "🦌 مناطق شکارممنوع": huntingLayer,
     "🔥 پهنه‌بندی شبکه‌ای FWI": gridLayer
   };
-  L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
+
+  L.control.layers(baseMaps, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
   const regionList = [];
 
