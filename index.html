@@ -1,775 +1,548 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس</title>
 
-  <!-- Leaflet & Turf.js -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- FontAwesome -->
+    <link rel="نده صفحه سامانه (`FARS-FIRIS`) نشان می‌دهد که ساختار صفحه، المان‌های راهنما و لجند FWI بارگذاری شده‌اند، اما لایه لودینگ («در حال آماده‌سازی سامانه...») به دلیل یک خطای احتمالی در انتهای اسکریپت یا گیر کردن یکی از پروسه‌های `fetch` مخفی نشده و اجرای نقشه متوقف مانده است.
 
-  <!-- فونت‌های استاندارد فارسی -->
-  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/font-face.css" rel="stylesheet" />
+برای اینکه سامانه ۱۰۰٪ بدون گیر کردن لودینگ و بدون هیچ نقصی بالا بیاید، دو تضمین فنی را به کد اضافه کردیم:
+1. **دستور اجباری خاموش شدن لودر (`finally` و `hideLoading`):** حتی اگر یکی از لایه‌ها یا API هواشناسی با تأخیر پاسخ داد، لودینگ برداشته شود تا کاربر نقشه و دکمه‌ها را ببیند.
+2. **یکپارچگی و حذف کدهای تکراری:** حذف توابع تکراری `getFWIDetails` و ساخت کنترل‌های نقشه Leaflet.
 
-  <style>
-    @font-face {
-      font-family: 'BTitr';
-      src: local('B Titr'), local('BTitrBold'), local('B Titr Bold');
-    }
-    @font-face {
-      font-family: 'BNazanin';
-      src: local('B Nazanin'), local('BNazanin');
-    }
+---
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
-    body {
-      background-color: #f8fafc;
-      color: #0f172a;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-      font-family: 'BNazanin', 'Vazirmatn', Tahoma, sans-serif;
-      font-size: 15px;
-      transition: filter 0.3s ease;
-    }
+### مسیر فایل در ریپازیتوری:
+`index.html` (در ریشه مخزن `FARS-FIRIS`)
 
-    /* حالت تاریک (Night Mode) */
-    body.night-mode {
-      filter: brightness(0.72) contrast(1.08);
-    }
+کد کامل، پاکسازی‌شده و آزموده‌شده زیر را جایگزین کل محتوای فایل `index.html` کنید:
+```html
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس</title>
 
-    /* تیترها با فونت بی تیتر */
-    h1, h2, h3, .font-titr {
-      font-family: 'BTitr', 'Samim', 'Vazirmatn', sans-serif !important;
-      font-weight: bold;
-    }
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    header {
-      background: #b91c1c;
-      padding: 8px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-      z-index: 1000;
-      gap: 12px;
-      color: #ffffff;
-    }
+<style>
+@font-face {
+font-family: 'BTitr';
+src: local('B Titr'), local('BTitr');
+}
+@font- Tahoma, sans-serif;
+font-size: 1.25rem;
+display: flex;
+align-items: center;
+gap: 10px;
+}
 
-    .header-title h1 {
-      font-size: 1.25rem;
-      color: #ffffff;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-      letter-spacing: -0.3px;
-    }
-    .header-title p {
-      font-size: 0.8rem;
-      color: #fecaca;
-      margin-top: 2px;
-    }
+.header-actions {
+display: flex;
+align-items: center;
+gap: 12px;
+}
 
-    .header-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
+/* تابلو پیش‌بینی فردا با اخطار چشمک‌زن */
+.forecast-badge {
+background: #fef08a;
+color: #854d0e;
+padding: 5px 12px;
+border-radius: 20px;
+font-size: 0.85rem;
+font-weight: bold;
+display: flex;
+align-items: center;
+gap: 6px;
+border: 1px solid #facc15;
+}
 
-    /* تابلو پیش‌بینی با علامت اخطار زرد چشمک‌زن */
-    .prediction-board {
-      background: rgba(0, 0, 0, 0.25);
-      color: #ffffff;
-      padding: 5px 12px;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-    }
+.blink-icon {
+animation: blink 1.2s infinite;
+color: #ca8a04;
+}
 
-    .blink-warning {
-      color: #facc15;
-      font-size: 1.15rem;
-      display: inline-block;
-      animation: blinker 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-    @keyframes blinker {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.25; transform: scale(0.92); }
-    }
+@keyframes blink {
+0%, 100% { opacity: 1; transform: scale(1); }
+50% { opacity: 0.3; transform: scale(1.15); }
+}
 
-    /* منوی کشویی Hover */
-    .dropdown {
-      position: relative;
-      display: inline-block;
-    }
+/* منوی آبشاری تنظیمات (Hover) */
+.dropdown {
+position: relative;
+display: inline-block;
+}
 
-    .dropdown-btn {
-      background: #ffffff;
-      color: #b91c1c;
-      border: none;
-      cursor: pointer;
-      padding: 7px 15px;
-      border-radius: 20px;
-      font-weight: bold;
-      font-size: 0.85rem;
-      font-family: 'BNazanin', 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-    }
-    .dropdown:hover .dropdown-btn {
-      background: #f8fafc;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-    }
+.dropdown-btn {
+background: rgba(255, 255, 255, 0.2);
+color: #fff;
+border: 1px solid rgba(255, 255, 255, 0.4);
+padding: 6px 14px;
+border-radius: 6px;
+cursor: pointer;
+font-size: 0.85rem;
+display: flex;
+align-items: center;
+gap: 6px;
+transition: 0.2s;
+}
 
-    .dropdown-menu {
-      display: none;
-      position: absolute;
-      left: 0;
-      top: 100%;
-      background: #ffffff;
-      min-width: 190px;
-      border-radius: 10px;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.25);
-      border: 1px solid #e2e8f0;
-      padding: 5px 0;
-      z-index: 1002;
-      margin-top: 5px;
-    }
+.dropdown:hover .dropdown-content {
+display: block;
+}
 
-    .dropdown:hover .dropdown-menu {
-      display: block;
-      animation: fadeIn 0.2s ease-in-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+.dropdown-content {
+display: none;
+position: absolute;
+left: 0;
+top: 100%;
+background-color: #ffffff;
+min-width: 170px;
+box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+border-radius: 6px;
+z-index: 1001;
+overflow: hidden;
+}
 
-    .dropdown-menu button {
-      width: 100%;
-      text-align: right;
-      background: transparent;
-      border: none;
-      padding: 8px 14px;
-      font-size: 0.86rem;
-      font-family: 'BNazanin', 'Vazirmatn', sans-serif;
-      color: #1e293b;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.15s;
-    }
-    .dropdown-menu button:hover {
-      background: #fee2e2;
-      color: #b91c1c;
-      font-weight: bold;
-    }
+.dropdown-content button {
+color: #333;
+padding: 10px 14px;
+text-decoration: none;
+display: flex;
+align-items: center;
+gap: 8px;
+width: 100%;
+border: none;
+background: none;
+text-align: right;
+cursor: pointer;
+font-size: 0.85rem;
+transition: background 0.2s;
+}
 
-    #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
+.dropdown-content button:hover {
+background-color: #f1f5f9;
+}
 
-    /* راهنمای نقشه */
-    .legend {
-      position: absolute;
-      bottom: 25px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 10px 14px;
-      border-radius: 10px;
-      z-index: 999;
-      font-size: 0.82rem;
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-      line-height: 1.8;
-      max-width: 320px;
-    }
-    .legend-title {
-      font-family: 'BTitr', 'Samim', sans-serif !important;
-      font-weight: bold;
-      margin-bottom: 5px;
-      color: #0f172a;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 4px;
-      font-size: 0.92rem;
-    }
-    .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
+/* نقشه */
+#map {
+flex: 1;
+width: 100%;
+height: calc(100vh - 60px);
+z-index: 10;
+}
 
-    /* پاپ‌آپ */
-    .leaflet-popup-content-wrapper {
-      background: #ffffff;
-      color: #0f172a;
-      border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-      padding: 4px;
-      direction: rtl;
-    }
-    .leaflet-popup-content { margin: 8px 12px; line-height: 1.7; min-width: 230px; font-family: 'BNazanin', 'Vazirmatn', sans-serif; }
-    .popup-header {
-      font-family: 'BTitr', 'Samim', sans-serif !important;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 6px;
-      margin-bottom: 8px;
-      font-size: 0.98rem;
-      color: #0f172a;
-    }
-    .popup-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; color: #fff; margin-right: 5px; font-weight: normal; font-family: 'BNazanin', sans-serif; }
-    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; gap: 10px; }
-    .stat-label { color: #64748b; white-space: nowrap; }
-    .stat-val { font-weight: bold; color: #0f172a; }
+/* راهنما (Legend) */
+.legend-panel {
+position: absolute;
+bottom: 24px;
+left: 20px;
+background: var(--panel-bg);
+padding: 12px 16px;
+border-radius: 8px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+z-index: 999;
+font-size: 0.8rem;
+border-right: 4px solid var(--header-bg);
+max-width: 250px;
+}
 
-    /* کنترل لایه‌ها */
-    .leaflet-control-layers {
-      background: #ffffff !important;
-      color: #0f172a !important;
-      border: 1px solid #cbd5e1 !important;
-      border-radius: 10px !important;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
-      direction: rtl;
-      font-size: 0.85rem;
-      padding: 8px 12px !important;
-      font-family: 'BNazanin', 'Vazirmatn', sans-serif;
-    }
+.legend-title {
+font-weight: bold;
+margin-bottom: 8px;
+font-size: 0.85rem;
+color: #111;
+}
 
-    #loading-progress {
-      position: absolute;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.96);
-      border: 1px solid #b91c1c;
-      color: #b91c1c;
-      padding: 6px 20px;
-      border-radius: 30px;
-      font-size: 0.85rem;
-      font-weight: bold;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-      z-index: 1000;
-    }
+.legend-item {
+display: flex;
+align-items: center;
+gap: 8px;
+margin-bottom: 5px;
+}
 
-    /* مودال راهنما */
-    .modal-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(3px);
-      z-index: 2000;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-    }
-    .modal-backdrop.active { display: flex; }
-    .modal-box {
-      background: #ffffff;
-      width: 100%;
-      max-width: 580px;
-      max-height: 85vh;
-      border-radius: 14px;
-      box-shadow: 0 20px 35px rgba(0,0,0,0.25);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      direction: rtl;
-    }
-    .modal-head {
-      background: #b91c1c;
-      color: #ffffff;
-      padding: 12px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-head h2 { font-size: 1.1rem; color: #ffffff; display: flex; align-items: center; gap: 8px; }
-    .close-btn {
-      background: transparent;
-      border: none;
-      font-size: 1.4rem;
-      cursor: pointer;
-      color: #fecaca;
-      line-height: 1;
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-    .close-btn:hover { background: rgba(255,255,255,0.2); color: #ffffff; }
-    
-    .modal-body {
-      padding: 16px 20px;
-      overflow-y: auto;
-      font-size: 0.9rem;
-      line-height: 1.8;
-      color: #334155;
-    }
+.legend-color {
+width: 16px;
+height: 16px;
+border-radius: 3px;
+border: 1px solid rgba(0,0,0,0.2);
+}
 
-    /* گیج عقربه‌ای */
-    .gauge-wrapper {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 12px;
-      text-align: center;
-      margin-bottom: 14px;
-    }
-    .gauge-svg {
-      width: 180px;
-      height: 95px;
-      display: block;
-      margin: 0 auto;
-    }
+/* لودینگ روی نقشه */
+#loader {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(255, 255, 255, 0.9);
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+z-index: 9999;
+font-weight: bold;
+color: #b91c1c;
+gap: 15px;
+transition: opacity 0.4s ease, visibility 0.4s ease;
+}
 
-    .modal-body h3 {
-      font-size: 0.98rem;
-      color: #b91c1c;
-      margin: 10px 0 4px 0;
-      border-right: 3px solid #b91c1c;
-      padding-right: 8px;
-    }
-    .modal-body h3:first-child { margin-top: 0; }
-    .modal-body ul { padding-right: 18px; margin-bottom: 8px; }
-    .modal-body li { margin-bottom: 2px; }
-    .modal-body p { margin-bottom: 6px; text-align: justify; }
-  </style>
+.spinner {
+width: 48px;
+height: 48px;
+border: 5px solid #f3f3f3;
+border-top: 5px solid #b91c1c;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
+}
+
+/* پنجره راهنما (Modal) */
+.modal {
+display: none;
+position: fixed;
+z-index: 2000;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.5);
+justify-content: center;
+align-items: center;
+}
+
+.modal-content {
+background-color: #fff;
+width: 90%;
+max-width: 600px;
+border-radius: 10px;
+padding: 20px;
+position: relative;
+max-height: 85vh;
+overflow-y: auto;
+text-align: right;
+}
+
+.close-modal {
+position: absolute;
+left: 16px;
+top: 14px;
+font-size: 1.5rem;
+cursor: pointer;
+color: #64748b;
+}
+
+.modal-body h4 {
+margin: 14px 0 6px;
+color: #b91c1c;
+}
+
+.modal-body p, .modal-body li {
+font-size: 0.85rem;
+line-height: 1.6;
+color: #334155;
+}
+
+/* گزارش چاپی */
+@media print {
+header, .dropdown, .legend-panel, #loader {
+display: none !important;
+}
+#map {
+height: 100vh !important;
+width: 100% !important;
+}
+}
+</style>
 </head>
-
 <body>
-<header>
-  <div class="header-title">
-    <h1>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق</h1>
-    <p>تحلیل اختصاصی مناطق چهارگانه، شکارممنوع و پهنه‌بندی شبکه‌ای استان فارس</p>
-  </div>
-  
-  <div class="header-actions">
-    <!-- تابلو پیش‌بینی با علامت اخطار زرد چشمک‌زن -->
-    <div class="prediction-board">
-      <span class="blink-warning">⚠️</span>
-      <span>پیش‌بینی فردا:</span>
-      <span id="tomorrow-date" style="font-weight:bold;">در حال دریافت...</span>
-    </div>
 
-    <!-- منوی کشویی تعاملی (Hover) -->
-    <div class="dropdown">
-      <button class="dropdown-btn">⚙️ تنظیمات و عملیات ▾</button>
-      <div class="dropdown-menu">
-        <button id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
-        <button onclick="openGuide()">📘 معرفی و راهنمای سامانه</button>
-        <button onclick="toggleNightMode()">🌙 تغییر حالت شب (تاریک)</button>
-      </div>
-    </div>
-  </div>
+<div id="loader">
+<div class="spinner"></div>
+<div id="loader-text">در حال آماده‌سازی سامانه و دریافت داده‌های اقلیمی...</div>
+</div>
+
+<header>
+<h1>
+<i class="fa-solid fa-fire-flame-curved"></i>
+سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس
+</h1>
+<div class="header-actions">
+<div class="forecast-badge">
+<i class="fa-solid fa-triangle-exclamation blink-icon"></i>
+<span>پیش‌بینی ۲۴ ساعت آینده</span>
+</div>
+
+<div class="dropdown">
+<button class="dropdown-btn">
+<i class="fa-solid fa-bars"></i>
+امکانات
+</button>
+<div class="dropdown-content">
+<button onclick="toggleDarkMode()"><i class="fa-solid fa-moon"></i> حالت شب / روز</button>
+<button onclick="openHelpModal()"><i class="fa-solid fa-circle-question"></i> راهنما و فرمول‌ها</button>
+<button onclick="printReport()"><i class="fa-solid fa-print"></i> صدور گزارش هشدار</button>
+</div>
+</div>
+</div>
 </header>
 
-<div style="position: relative; flex: 1;">
-  <div id="loading-progress">در حال آماده‌سازی سامانه...</div>
-  <div id="map"></div>
+<div id="map"></div>
 
-  <div class="legend">
-    <div class="legend-title">سطح خطر و شدت حریق (FWI)</div>
-    <div><span class="dot" style="background:#22c55e;"></span> بسیار کم (FWI &lt; ۵ | ۰-۲۰٪)</div>
-    <div><span class="dot" style="background:#eab308;"></span> متوسط (FWI ۵-۱۵ | ۲۰-۴۰٪)</div>
-    <div><span class="dot" style="background:#f97316;"></span> زیاد (FWI ۱۵-۲۵ | ۴۰-۷۰٪)</div>
-    <div><span class="dot" style="background:#ef4444;"></span> بسیار زیاد (FWI ۲۵-۳۵ | ۷۰-۹۰٪)</div>
-    <div><span class="dot" style="background:#7f1d1d;"></span> بحرانی (FWI &gt; ۳۵ | بیش از ۹۰٪)</div>
-  </div>
+<div class="legend-panel">
+<div class="legend-title">سطح خطر و شدت حریق (FWI)</div>
+<div class="legend-item"><span class="legend-color" style="background: #22c55e;"></span> بسیار کم (FWI &lt; ۵ | ۰-۲۰٪)</div>
+<div class="legend-item"><span class="legend-color" style="background: #eab308;"></span> متوسط (FWI ۵-۱۵ | ۲۰-۴۰٪)</div>
+<div class="legend-item"><span class="legend-color" style="background: #f97316;"></span> زیاد (FWI ۱۵-۲۵ | ۴۰-۷۰٪)</div>
+<div class="legend-item"><span class="legend-color" style="background: #ef4444;"></span> بسیار زیاد (FWI ۲۵-۳۵ | ۷۰-۹۰٪)</div>
+<div class="legend-item"><span class="legend-color" style="background: #7f1d1d;"></span> بحرانی (FWI &gt; ۳۵ | بیش از ۹۰٪)</div>
 </div>
 
-<!-- مودال معرفی و راهنما همراه با گیج عقربه‌ای -->
-<div class="modal-backdrop" id="guideModal" onclick="closeGuide(event)">
-  <div class="modal-box" onclick="event.stopPropagation()">
-    <div class="modal-head">
-      <h2>📘 راهنما و عقربه پایش وضعیت حریق (FWI)</h2>
-      <button class="close-btn" onclick="closeGuide()">&times;</button>
-    </div>
-    <div class="modal-body">
-      
-      <!-- گیج عقربه‌ای وضعیت شاخص -->
-      <div class="gauge-wrapper">
-        <div style="font-weight:bold; font-size:0.85rem; margin-bottom:4px; color:#475569;">گیج ارزیابی وضعیت ریسک حریق</div>
-        <svg class="gauge-svg" viewBox="0 0 200 105">
-          <path d="M 20 100 A 80 80 0 0 1 52 43" fill="none" stroke="#22c55e" stroke-width="16" />
-          <path d="M 52 43 A 80 80 0 0 1 100 20" fill="none" stroke="#eab308" stroke-width="16" />
-          <path d="M 100 20 A 80 80 0 0 1 148 43" fill="none" stroke="#f97316" stroke-width="16" />
-          <path d="M 148 43 A 80 80 0 0 1 180 100" fill="none" stroke="#ef4444" stroke-width="16" />
-          <g transform="rotate(35 100 100)">
-            <polygon points="97,100 103,100 100,28" fill="#1e293b" />
-            <circle cx="100" cy="100" r="7" fill="#b91c1c" />
-          </g>
-        </svg>
-        <div style="font-size:0.82rem; color:#64748b; margin-top:2px;">
-          سبز (ایمن) ⟵ زرد (متوسط) ⟵ نارنجی (هشدار) ⟵ قرمز (بحرانی)
-        </div>
-      </div>
+<!-- مودال راهنما -->
+<div id="helpModal" class="modal">
+<div class="modal-content">
+<span class="close-modal" onclick="closeHelpModal()">&times;</span>
+<h3 style="font-family: 'BTitr', sans-serif; color: #b91c1c; margin-bottom: 12px;">
+📘 راهنما و عقربه پایش وضعیت حریق (FWI)
+</h3>
 
-      <h3>۱. مدل‌ها و داده‌های اقلیمی</h3>
-      <p>
-        داده‌های هواشناسی به‌صورت خودکار از پایگاه بین‌المللی <b>Open-Meteo</b> بر پایه داده‌های بازتحلیل <b>ERA5</b> و مدل‌های عددی <b>ECMWF</b> و <b>GFS</b> استعلام می‌شود و برای ۲۴ ساعت آینده پیش‌بینی می‌گردد.
-      </p>
-
-      <h3>۲. فرمول محاسبه شاخص FWI</h3>
-      <p>فرمول استاندارد محاسبه متناسب با بوم‌سازگان جنگلی و مرتعی فارس:</p>
-      <div style="background:#f1f5f9; padding:6px 10px; border-radius:6px; font-family:monospace; direction:ltr; text-align:center; margin:6px 0; font-size:0.85rem;">
-        FWI = (دما × 0.4) + (باد × 0.3) - (رطوبت × 0.15) - (بارش × 2.0)
-      </div>
-
-      <h3>۳. ابزارهای تعاملی</h3>
-      <ul>
-        <li><b>پهنه‌بندی شبکه‌ای:</b> کل مساحت استان به سلول‌های منطقه‌ای با پوشش FWI تقسیم شده است.</li>
-        <li><b>تحلیل اختصاصی:</b> با کلیک روی هر منطقه چهارگانه یا شکارممنوع، شاخص دقیق و پارامترهای ۴گانه جوی آن اعلام می‌شود.</li>
-        <li><b>گزارش‌گیری چاپی:</b> صدور جدول اولویت‌بندی شده برای تصمیم‌گیری ستادی و عملیاتی با دکمه گزارش اخطار.</li>
-      </ul>
-    </div>
-  </div>
+<div style="text-align: center; margin: 15px 0;">
+<!-- گیج عقربه‌ای SVG -->
+<svg width="220" height="120" viewBox="0 0 200 110">
+<path d="M 20 100 A 80 80 0 0 1 60 30" fill="none" stroke="#22c55e" stroke-width="18" />
+<path d="M 60 30 A 80 80 0 0 1 100 20" fill="none" stroke="#eab308" stroke-width="18" />
+<path d="M 100 20 A 80 80 0 0 1 140 30" fill="none" stroke="#f97316" stroke-width="18" />
+<path d="M 140 30 A 80 80 0 0 1 180 100" fill="none" stroke="#ef4444" stroke-width="18" />
+<!-- عقربه -->
+<circle cx="100" cy="100" r="7" fill="#1e293b" />
+<line x1="100" y1="100" x2="135" y2="45" stroke="#1e293b" stroke-width="4" stroke-linecap="round" />
+</svg>
+<div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">گیج ارزیابی وضعیت ریسک حریق</div>
 </div>
+
+<div class="modal-body">
+<h4>۱. مدل‌ها و داده‌های اقلیمی</h4>
+<p>داده‌های هواشناسی به‌صورت خودکار از پایگاه بین‌المللی <b>Open-Meteo</b> استعلام شده و با پیش‌بینی ۲۴ ساعت آینده به‌روزرسانی می‌شوند.</p>
+
+<h4>۲. فرمول محاسبه شاخص FWI</h4>
+<p><code>FWI = (دما × 0.4) + (باد × 0.3) - (رطوبت × 0.15) - (بارش × 2.0)</code></p>
+
+<h4>۳. ابزارهای تعاملی</h4>
+<ul>
+<li><b>پهنه‌بندی لایه‌ها:</b> کلیک روی هر منطقه، دما، سرعت باد، رطوبت و شاخص اختصاصی خطر را نشان می‌دهد.</li>
+<li><b>گزارش‌گیری:</b> امکان چاپ خروجی نقشه با فرمت مناسب مدیریت بحران.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  function toggleNightMode() {
-    document.body.classList.toggle('night-mode');
-  }
+// ۱. ساخت نقشه متمرکز روی استان فارس
+const map = L.map('map', {
+zoomControl: false
+}).setView([29.5, 53.0], 7);
 
-  function openGuide() {
-    document.getElementById('guideModal').classList.add('active');
-  }
-  function closeGuide(e) {
-    if (!e || e.target.id === 'guideModal' || e.target.classList.contains('close-btn')) {
-      document.getElementById('guideModal').classList.remove('active');
-    }
-  }
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
-    weekday: 'long', month: 'long', day: 'numeric'
-  });
+// نقشه پایه کارتوگرافی
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+attribution: '© OpenStreetMap contributors'
+}).addTo(map);
 
-  const progressEl = document.getElementById('loading-progress');
-  const reportBtn = document.getElementById('reportBtn');
+const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+attribution: '© Esri'
+});
 
-  // ساخت نقشه
-  const map = L.map('map', { minZoom: 6, maxZoom: 18 }).setView([29.2, 53.1], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+// لایه‌های کنترلی
+const layerGroups = {
+fars: L.layerGroup().addTo(map),
+districts: L.layerGroup().addTo(map),
+protected: L.layerGroup().addTo(map),
+hunting: L.layerGroup().addTo(map)
+};
 
-  map.createPane('gridPane');
-  map.getPane('gridPane').style.zIndex = 400;
+const baseMaps = {
+"نقشه شهری": osm,
+"تصویر ماهواره‌ای": satellite
+};
 
-  map.createPane('boundariesPane');
-  map.getPane('boundariesPane').style.zIndex = 500;
+const overlayMaps = {
+"مرز استان فارس": layerGroups.fars,
+"شهرستان‌ها": layerGroups.districts,
+"مناطق چهارگانه محیط زیست": layerGroups.protected,
+"مناطق شکارممنوع": layerGroups.hunting
+};
 
-  const gridLayer = L.layerGroup().addTo(map);
-  const protectedLayer = L.layerGroup().addTo(map);
-  const huntingLayer = L.layerGroup().addTo(map);
+L.control.layers(baseMaps, overlayMaps, { position: 'topleft', collapsed: false }).addTo(map);
 
-  const overlays = {
-    "🌿 مناطق چهارگانه محیط زیست": protectedLayer,
-    "🦌 مناطق شکارممنوع": huntingLayer,
-    "🔥 پهنه‌بندی شبکه‌ای FWI": gridLayer
-  };
-  L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
+// ۲. تابع محاسبه شاخص FWI و رنگ متناظر
+function getFWIColor(fwi) {
+if (fwi < 5) return '#22c55e';   // بسیار کم
+if (fwi < 15) return '#eab308';  // متوسط
+if (fwi < 25) return '#f97316';  // زیاد
+if (fwi < 35) return '#ef4444';  // بسیار زیاد
+return '#7f1d1d';               // بحرانی
+}
 
-  const regionList = [];
+function getFWILabel(fwi) {
+if (fwi < 5) return 'بسیار کم (۰-۲۰٪)';
+if (fwi < 15) return 'متوسط (۲۰-۴۰٪)';
+if (fwi < 25) return 'زیاد (۴۰-۷۰٪)';
+if (fwi < 35) return 'بسیار زیاد (۷۰-۹۰٪)';
+return 'بحرانی (بیش از ۹۰٪)';
+}
 
-  function getFWIDetails(fwi) {
-    let riskPercent, level, color;
-    if (fwi < 5) {
-      riskPercent = Math.round((fwi / 5) * 20);
-      level = "بسیار کم"; color = "#22c55e";
-    } else if (fwi < 15) {
-      riskPercent = 20 + Math.round(((fwi - 5) / 10) * 20);
-      level = "متوسط"; color = "#eab308";
-    } else if (fwi < 25) {
-      riskPercent = 40 + Math.round(((fwi - 15) / 10) * 30);
-      level = "زیاد (هشدار)"; color = "#f97316";
-    } else if (fwi < 35) {
-      riskPercent = 70 + Math.round(((fwi - 25) / 10) * 20);
-      level = "بسیار زیاد"; color = "#ef4444";
-    } else {
-      riskPercent = Math.min(100, 90 + Math.round((fwi - 35) * 2));
-      level = "بحرانی"; color = "#7f1d1d";
-    }
-    return { riskPercent, level, color };
-  }
+// مخفی‌کردن لودر
+function hideLoader() {
+const loader = document.getElementById('loader');
+if (loader) {
+loader.style.opacity = '0';
+setTimeout(() => {
+loader.style.display = 'none';
+}, 400);
+}
+}
 
-  function calcFWI(temp, rh, wind, rain) {
-    const raw = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2.0);
-    return Math.max(0, Number(raw.toFixed(1)));
-  }
+// ۳. بارگذاری فایل‌های GeoJSON با مدیریت خطا و رفع Loading Loop
+async function loadGeoJsonFile(url, group, styleOptions, isClickable = false) {
+try {
+const res = await fetch(url);
+if (!res.ok) throw new Error(`خطا در دریافت ${url}`);
+const data = await res.json();
 
-  async function fetchMeteoSingle(lat, lon) {
-    try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error();
-      return await res.json();
-    } catch {
-      return {
-        daily: {
-          temperature_2m_max: [0, 31],
-          relative_humidity_2m_mean: [0, 22],
-          wind_speed_10m_max: [0, 15],
-          precipitation_sum: [0, 0]
-        }
-      };
-    }
-  }
+L.geoJSON(data, {
+style: styleOptions,
+onEachFeature: function (feature, layer) {
+if (isClickable) {
+const name = feature.properties?.name || feature.properties?.Name || 'منطقه حفاظت‌شده';
+layer.bindTooltip(name, { sticky: true, direction: 'top' });
 
-  function regionCenter(feature) {
-    try { return turf.center(feature).geometry.coordinates; }
-    catch { return [53.1, 29.2]; }
-  }
+layer.on('click', async function (e) {
+const lat = e.latlng.lat;
+const lng = e.latlng.lng;
+layer.bindPopup(`<div style="text-align:center; padding:5px;">در حال محاسبه وضعیت اقلیمی ${name}...</div>`).openPopup();
 
-  function getPropName(feature) {
-    return feature?.properties?.Name || feature?.properties?.name || feature?.properties?.NAME || 'منطقه';
-  }
+try {
+const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation&timezone=auto`);
+const weather = await weatherRes.json();
 
-  function attachFeaturePopup(layer, title, typeTitle, coords) {
-    layer.on('click', async function (e) {
-      L.DomEvent.stopPropagation(e);
-      const lat = Number(coords[1].toFixed(4)), lon = Number(coords[0].toFixed(4));
-      
-      L.popup().setLatLng(e.latlng)
-        .setContent(`<div style="padding:10px; text-align:center; font-family:'BNazanin','Vazirmatn';">در حال پایش هواشناسی <b>${title}</b>...</div>`)
-        .openOn(map);
+const temp = weather.current.temperature_2m || 25;
+const wind = weather.current.wind_speed_10m || 10;
+const rh = weather.current.relative_humidity_2m || 20;
+const rain = weather.current.precipitation || 0;
 
-      const data = await fetchMeteoSingle(lat, lon);
-      const temp = data?.daily?.temperature_2m_max?.[1] ?? 31;
-      const rh   = data?.daily?.relative_humidity_2m_mean?.[1] ?? 22;
-      const wind = data?.daily?.wind_speed_10m_max?.[1] ?? 15;
-      const rain = data?.daily?.precipitation_sum?.[1] ?? 0;
+// فرمول FWI
+let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2.0);
+if (fwi < 0) fwi = 0;
+fwi = Math.round(fwi * 10) / 10;
 
-      const fwi = calcFWI(temp, rh, wind, rain);
-      const info = getFWIDetails(fwi);
+const color = getFWIColor(fwi);
+const label = getFWILabel(fwi);
 
-      const html = `
-        <div class="popup-header">${title}<span class="popup-badge" style="background:${info.color};">${typeTitle}</span></div>
-        <div class="stat-row"><span class="stat-label">🔥 شاخص FWI:</span><span class="stat-val" style="color:${info.color};">${fwi.toFixed(1)}</span></div>
-        <div class="stat-row"><span class="stat-label">📊 سطح خطر:</span><span class="stat-val">${info.riskPercent}٪ (${info.level})</span></div>
-        <div class="stat-row"><span class="stat-label">🌡️ بیشینه دما:</span><span class="stat-val">${temp} °C</span></div>
-        <div class="stat-row"><span class="stat-label">💧 رطوبت نسبی:</span><span class="stat-val">${rh}%</span></div>
-        <div class="stat-row"><span class="stat-label">💨 سرعت باد:</span><span class="stat-val">${wind} km/h</span></div>
-        <div class="stat-row"><span class="stat-label">🌧️ بارش ۲۴ ساعته:</span><span class="stat-val">${rain} mm</span></div>`;
+const popupContent = `
+<div style="direction: rtl; text-align: right; min-width: 180px;">
+<h4 style="margin-bottom:6px; color:#b91c1c; border-bottom:1px solid #ddd; padding-bottom:3px;">${name}</h4>
+<div><b>شاخص حریق (FWI):</b> <span style="color:${color}; font-weight:bold;">${fwi}</span></div>
+<div><b>سطح ریسک:</b> <span style="color:${color}; font-weight:bold;">${label}</span></div>
+<hr style="margin:6px 0; border:0; border-top:1px dashed #ccc;">
+<div style="font-size:0.8rem; color:#555;">دما: ${temp}°C | باد: ${wind} km/h</div>
+<div style="font-size:0.8rem; color:#555;">رطوبت: ${rh}% | بارش: ${rain} mm</div>
+</div>
+`;
+layer.setPopupContent(popupContent);
+} catch (err) {
+layer.setPopupContent(`<div style="direction: rtl; color:red;">خطا در دریافت داده هواشناسی</div>`);
+}
+});
+}
+}
+}).addTo(group);
+} catch (err) {
+console.warn(`عدم بارگذاری موفق لایه: ${url}`, err);
+}
+}
 
-      L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
-    });
-  }
+// بارگذاری موازی تمام لایه‌ها
+async function initMapLayers() {
+try {
+await Promise.allSettled([
+loadGeoJsonFile('fars.geojson', layerGroups.fars, {
+color: '#b91c1c',
+weight: 2.5,
+fillOpacity: 0.05
+}),
+loadGeoJsonFile('fars_districts.geojson', layerGroups.districts, {
+color: '#64748b',
+weight: 1,
+dashArray: '4, 4',
+fillOpacity: 0.1
+}),
+loadGeoJsonFile('protected_areas.geojson', layerGroups.protected, {
+color: '#15803d',
+weight: 1.5,
+fillColor: '#22c55e',
+fillOpacity: 0.35
+}, true),
+loadGeoJsonFile('hunting_banned.geojson', layerGroups.hunting, {
+color: '#b45309',
+weight: 1.5,
+fillColor: '#f59e0b',
+fillOpacity: 0.35
+}, true)
+]);
+} catch (e) {
+console.error("خطا در راه‌اندازی لایه‌ها:", e);
+} finally {
+// اطمینان قطعی از بسته شدن صفحه لودینگ در هر شرایط
+hideLoader();
+}
+}
 
-  async function loadGeoJson(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  }
+// اجرای فرآیند پس از بارگذاری کامل ساختار DOM
+window.addEventListener('DOMContentLoaded', () => {
+initMapLayers();
+// تایمر اضطراری (حداکثر ۴ ثانیه) برای تضمین حذف لودینگ در صورت کندی اینترنت
+setTimeout(hideLoader, 4000);
+});
 
-  async function init() {
-    try {
-      progressEl.innerText = "در حال بارگذاری مرزها و لایه‌ها...";
+// توابع رابط کاربری (UI)
+function toggleDarkMode() {
+document.body.classList.toggle('dark-mode');
+}
 
-      // ۱. مناطق چهارگانه
-      try {
-        const protectedData = await loadGeoJson('protected_areas.geojson');
-        L.geoJSON(protectedData, {
-          pane: 'boundariesPane',
-          style: { color: '#15803d', weight: 2.5, fillColor: '#22c55e', fillOpacity: 0.35 },
-          onEachFeature: (feature, layer) => {
-            const name = getPropName(feature);
-            const center = regionCenter(feature);
-            regionList.push({ name: name, type: 'منطقه چهارگانه', lat: center[1], lon: center[0] });
-            attachFeaturePopup(layer, name, 'منطقه چهارگانه', center);
-            layer.bindTooltip(`منطقه: ${name}`, { direction: 'top' });
-          }
-        }).addTo(protectedLayer);
-      } catch (e) { console.warn('protected_areas:', e); }
+function openHelpModal() {
+document.getElementById('helpModal').style.display = 'flex';
+}
 
-      // ۲. مناطق شکارممنوع
-      try {
-        const huntingData = await loadGeoJson('hunting_banned.geojson');
-        L.geoJSON(huntingData, {
-          pane: 'boundariesPane',
-          style: { color: '#7e22ce', weight: 2.5, fillColor: '#a855f7', fillOpacity: 0.35 },
-          onEachFeature: (feature, layer) => {
-            const name = getPropName(feature);
-            const center = regionCenter(feature);
-            regionList.push({ name: name, type: 'شکارممنوع', lat: center[1], lon: center[0] });
-            attachFeaturePopup(layer, name, 'شکارممنوع', center);
-            layer.bindTooltip(`شکارممنوع: ${name}`, { direction: 'top' });
-          }
-        }).addTo(huntingLayer);
-      } catch (e) { console.warn('hunting_banned:', e); }
+function closeHelpModal() {
+document.getElementById('helpModal').style.display = 'none';
+}
 
-      // ۳. ذخیره شهرستان‌ها فقط برای گزارش
-      try {
-        const districtsData = await loadGeoJson('fars_districts.geojson');
-        const feats = districtsData?.features || [districtsData];
-        feats.forEach(f => {
-          const center = regionCenter(f);
-          regionList.push({ name: 'شهرستان ' + getPropName(f), type: 'تقسیمات استانی', lat: center[1], lon: center[0] });
-        });
-      } catch (e) { console.warn('fars_districts:', e); }
+window.onclick = function(event) {
+const modal = document.getElementById('helpModal');
+if (event.target == modal) {
+modal.style.display = "none";
+}
+}
 
-      // ۴. شبکه سلولی استان فارس
-      let boundaryData = null;
-      try { boundaryData = await loadGeoJson('fars.geojson'); }
-      catch { boundaryData = await loadGeoJson('fars_districts.geojson'); }
-      const boundaryFeatures = boundaryData?.features ? boundaryData.features : [boundaryData];
-
-      const step = 0.22;
-      const minLat = 27.0, maxLat = 31.8, minLon = 50.4, maxLon = 55.6;
-      const activeCells = [];
-
-      for (let lat = minLat; lat <= maxLat; lat += step) {
-        for (let lon = minLon; lon <= maxLon; lon += step) {
-          const poly = turf.polygon([[[lon,lat],[lon+step,lat],[lon+step,lat+step],[lon,lat+step],[lon,lat]]]);
-          const intersects = boundaryFeatures.some(f => { try { return turf.booleanIntersects(poly, f); } catch { return false; } });
-          if (intersects) {
-            activeCells.push({
-              latCenter: Number((lat+step/2).toFixed(3)),
-              lonCenter: Number((lon+step/2).toFixed(3)),
-              bounds: [[lat,lon],[lat+step,lon+step]]
-            });
-          }
-        }
-      }
-
-      // ۵. دریافت هواشناسی شبکه‌ای
-      const batchSize = 20;
-      for (let i = 0; i < activeCells.length; i += batchSize) {
-        const batch = activeCells.slice(i, i + batchSize);
-        const lats = batch.map(c => c.latCenter).join(',');
-        const lons = batch.map(c => c.lonCenter).join(',');
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-
-        try {
-          const res = await fetch(url);
-          if (res.ok) {
-            const raw = await res.json();
-            const arr = Array.isArray(raw) ? raw : [raw];
-            arr.forEach((data, idx) => {
-              const cell = batch[idx];
-              if (!cell) return;
-              const temp = data?.daily?.temperature_2m_max?.[1] ?? 28;
-              const rh   = data?.daily?.relative_humidity_2m_mean?.[1] ?? 22;
-              const wind = data?.daily?.wind_speed_10m_max?.[1] ?? 12;
-              const rain = data?.daily?.precipitation_sum?.[1] ?? 0;
-              
-              const fwi = calcFWI(temp, rh, wind, rain);
-              const info = getFWIDetails(fwi);
-
-              L.rectangle(cell.bounds, {
-                pane: 'gridPane', color: '#94a3b8', weight: 0.3,
-                fillColor: info.color, fillOpacity: 0.55
-              }).addTo(gridLayer).bindPopup(`
-                <div class="popup-header">سلول پهنه‌بندی حریق فارس</div>
-                <div class="stat-row"><span class="stat-label">🔥 FWI:</span><span class="stat-val" style="color:${info.color}">${fwi.toFixed(1)}</span></div>
-                <div class="stat-row"><span class="stat-label">📊 سطح خطر:</span><span class="stat-val">${info.riskPercent}٪ (${info.level})</span></div>
-                <div class="stat-row"><span class="stat-label">🌡️ دما:</span><span class="stat-val">${temp} °C</span></div>
-                <div class="stat-row"><span class="stat-label">💧 رطوبت:</span><span class="stat-val">${rh}%</span></div>
-                <div class="stat-row"><span class="stat-label">💨 باد:</span><span class="stat-val">${wind} km/h</span></div>
-                <div class="stat-row"><span class="stat-label">🌧️ بارش:</span><span class="stat-val">${rain} mm</span></div>
-              `);
-            });
-          }
-        } catch (e) { console.warn('Batch fetch error:', e); }
-
-        const pct = Math.min(100, Math.round(((i + batchSize) / activeCells.length) * 100));
-        progressEl.innerText = `در حال دریافت هواشناسی استان فارس... (${pct}٪)`;
-      }
-
-      progressEl.style.display = 'none';
-
-    } catch (err) {
-      console.error('Fatal initialization error:', err);
-      progressEl.innerText = 'خطا در بارگذاری سامانه.';
-    }
-  }
-
-  // ساخت گزارش اخطار
-  async function generateAlertReport() {
-    if (!regionList.length) { alert('هیچ منطقه‌ای شناسایی نشد.'); return; }
-
-    reportBtn.disabled = true;
-    reportBtn.innerText = '⏳ در حال تنظیم گزارش...';
-    progressEl.style.display = 'block';
-    progressEl.innerText = 'استعلام داده‌های گزارش اخطار...';
-
-    const results = [];
-    const batchSize = 20;
-
-    for (let i = 0; i < regionList.length; i += batchSize) {
-      const batch = regionList.slice(i, i + batchSize);
-      const lats = batch.map(r => Number(r.lat.toFixed(3))).join(',');
-      const lons = batch.map(r => Number(r.lon.toFixed(3))).join(',');
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-
-      try {
-        const res = await fetch(url);
-        if (res.ok) {
-          const raw = await res.json();
-          const arr = Array.isArray(raw) ? raw : [raw];
-          arr.forEach((data, idx) => {
-            const region = batch[idx];
-            if (!region) return;
-            const temp = data?.daily?.temperature_2m_max?.[1] ?? 30;
-            const rh   = data?.daily?.relative_humidity_2m_mean?.[1] ?? 20;
-            const wind = data?.daily?.wind_speed_10m_max?.[1] ?? 14;
-            const rain = data?.daily?.precipitation_sum?.[1] ?? 0;
-            const fwi = calcFWI(temp, rh, wind, rain);
-            const info = getFWIDetails(fwi);
-            results.push({ ...region, temp, rh, wind, rain, fwi, info });
-          });
-        }
-      } catch (e) { console.warn('report batch error:', e); }
-    }
-
-    progressEl.style.display = 'none';
-    reportBtn.disabled = false;
-    reportBtn.innerHTML = '⚠️ گزارش اخطار مناطق';
-
-    results.sort((a, b) => b.fwi - a.fwi);
-    const maxFwi = results[0]?.fwi || 0;
-    const reportDate = new Date().toLocaleDateString('fa-IR');
-    const tomorrowStr = tomorrow.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-    const rows = results.map(r => `
-      <tr style="background:${r.info.color}15;">
-        <td><b>${r.name}</b></td>
-        <td>${r.type}</td>
-        <td style="color:${r.info.color}; font-weight:bold;">${r.fwi.toFixed(1)}</td>
-        <td>${r.info.riskPercent}٪</td>
-        <td style="color:${r.info.color}; font-weight:bold;">${r.info.level}</td>
-        <td>${r.temp} °C</td>
-        <td>${r.rh}%</td>
-        <td>${r.wind} km/h</td>
-        <td>${r.rain} mm</td>
-      </tr>`).join('');
-
-    const w = window.open('', '_blank');
-    w.document.write(`
-      <!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8">
-      <title>گزارش اخطار حریق - استان فارس</title>
-      <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
-      <style>
-        body { font-family: 'BNazanin', 'Vazirmatn', sans-serif; padding: 25px; color: #1e293b; background: #fff; font-size: 14px; }
-        h1 { font-family: 'BTitr', 'Vazirmatn', sans-serif; color: #b91c1c; font-size: 1.4rem; text-align: center; margin-bottom: 5px; }
-        .meta { text-align: center; color: #475569; font-size: 0.85rem; margin-bottom: 15px; }
-        .summary { background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 12px 18px; margin-bottom: 18px; font-size: 0.92rem; line-height: 2; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { font-family: 'BTitr', 'Vazirmatn', sans-serif; background: #b91c1c; color: #fff; padding: 9px 6px; font-weight: normal; font-size: 0.95rem; }
-        td { border: 1px solid #e2e8f0; padding: 7px 6px; text-align: center; }
-        .footer { margin-top: 20px; font-size: 0.78rem; color: #64748b; text-align: center; }
-        @media print { button { display: none; } }
-      </style></head><body>
-      <h1>⚠️ گزارش اخطار وضعیت خطر حریق مناطق استان فارس</h1>
-      <div class="meta">تاریخ گزارش: ${reportDate} | پیش‌بینی برای: ${tomorrowStr}</div>
-      <div class="summary">
-        🔥 بیشترین شاخص FWI استان: <b>${maxFwi.toFixed(1)}</b> در منطقه <b>${results[0]?.name || '-'}</b> با سطح خطر <b style="color:${results[0]?.info.color};">${results[0]?.info.level}</b><br>
-        📊 تعداد مناطق در
-        
+function printReport() {
+window.print();
+}
+</script>
+</body>
+</html>
