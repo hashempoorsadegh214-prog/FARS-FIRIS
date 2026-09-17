@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس</title>
+  <title>سامانه پایش و پهنه‌بندی خطر حریق (FWI) استان فارس</title>
 
   <!-- Leaflet & Turf.js -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,123 +17,69 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-    /* هدر قرمز یک‌دست با ساختار ۳ ستونه متوازن */
     header {
+      background: #ffffff;
+      padding: 10px 20px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+      z-index: 1000;
+      gap: 10px;
+    }
+    .header-title h1 { font-size: 1.05rem; color: #c2410c; }
+    .header-title p { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    .badge {
+      background: #ea580c;
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+      white-space: nowrap;
+    }
+
+    .report-btn {
       background: #b91c1c;
       color: #ffffff;
-      padding: 10px 20px;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-      z-index: 1000;
-    }
-
-    .header-right {
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .header-center {
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .header-center h1 {
-      font-size: 1.2rem;
-      font-weight: 800;
-      color: #ffffff;
-      letter-spacing: -0.5px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    /* تابلو اعلام وضعیت فردا زیر عنوان */
-    .badge-tomorrow {
-      background: rgba(255, 255, 255, 0.18);
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      color: #ffffff;
-      padding: 3px 16px;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 0.82rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      backdrop-filter: blur(4px);
-    }
-
-    .badge-tomorrow .pulse-icon {
-      width: 8px;
-      height: 8px;
-      background-color: #4ade80;
-      border-radius: 50%;
-      box-shadow: 0 0 6px #4ade80;
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(0.9); opacity: 0.7; }
-      50% { transform: scale(1.3); opacity: 1; }
-      100% { transform: scale(0.9); opacity: 0.7; }
-    }
-
-    .header-left {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* دکمه‌های هدر */
-    .report-btn {
-      background: #ffffff;
-      color: #b91c1c;
       border: none;
       cursor: pointer;
-      padding: 7px 18px;
+      padding: 7px 16px;
       border-radius: 20px;
-      font-weight: 800;
+      font-weight: bold;
       font-size: 0.85rem;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      font-family: 'Vazirmatn', sans-serif;
+      box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s ease;
+      transition: background 0.2s;
     }
-    .report-btn:hover {
-      background: #fee2e2;
-      transform: translateY(-1px);
-    }
-    .report-btn:disabled {
-      background: #e2e8f0;
-      color: #94a3b8;
-      cursor: wait;
-    }
+    .report-btn:hover { background: #991b1b; }
+    .report-btn:disabled { background: #9ca3af; cursor: wait; }
 
+    /* دکمه جدید راهنما */
     .guide-btn {
       background: #0284c7;
       color: #ffffff;
       border: none;
       cursor: pointer;
-      padding: 7px 18px;
+      padding: 7px 16px;
       border-radius: 20px;
-      font-weight: 800;
+      font-weight: bold;
       font-size: 0.85rem;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      font-family: 'Vazirmatn', sans-serif;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s ease;
+      transition: background 0.2s;
     }
-    .guide-btn:hover {
-      background: #0369a1;
-      transform: translateY(-1px);
-    }
+    .guide-btn:hover { background: #0369a1; }
 
     #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
 
@@ -142,17 +88,17 @@
       position: absolute;
       bottom: 25px;
       right: 20px;
-      background: rgba(255, 255, 255, 0.96);
+      background: rgba(255, 255, 255, 0.95);
       padding: 12px 16px;
       border-radius: 10px;
       z-index: 999;
       font-size: 0.82rem;
       border: 1px solid #cbd5e1;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       line-height: 1.8;
       max-width: 320px;
     }
-    .legend-title { font-weight: bold; margin-bottom: 6px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .legend-title { font-weight: bold; margin-bottom: 5px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
     .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
 
     /* پاپ‌آپ */
@@ -199,7 +145,7 @@
       z-index: 1000;
     }
 
-    /* استایل مودال راهنما */
+    /* استایل پنجره مودال راهنما */
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -215,7 +161,7 @@
     .modal-box {
       background: #ffffff;
       width: 100%;
-      max-width: 680px;
+      max-width: 650px;
       max-height: 85vh;
       border-radius: 14px;
       box-shadow: 0 20px 30px rgba(0,0,0,0.2);
@@ -232,7 +178,7 @@
       justify-content: space-between;
       align-items: center;
     }
-    .modal-head h2 { font-size: 1.05rem; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+    .modal-head h2 { font-size: 1.05rem; color: #0f172a; }
     .close-btn {
       background: transparent;
       border: none;
@@ -253,44 +199,28 @@
     }
     .modal-body h3 {
       font-size: 0.95rem;
-      color: #b91c1c;
+      color: #c2410c;
       margin: 14px 0 6px 0;
-      border-right: 3px solid #b91c1c;
+      border-right: 3px solid #c2410c;
       padding-right: 8px;
     }
     .modal-body h3:first-child { margin-top: 0; }
     .modal-body ul { padding-right: 20px; margin-bottom: 10px; }
     .modal-body li { margin-bottom: 4px; }
     .modal-body p { margin-bottom: 8px; text-align: justify; }
-    .badge-inline {
-      display: inline-block;
-      padding: 1px 7px;
-      background: #e2e8f0;
-      border-radius: 6px;
-      font-size: 0.78rem;
-      font-weight: bold;
-      color: #0f172a;
-    }
   </style>
 </head>
 
 <body>
 <header>
-  <div class="header-right">
+  <div class="header-title">
+    <h1>سامانه پایش آنلاین حریق و شاخص FWI استان فارس</h1>
+    <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و پهنه‌بندی شبکه‌ای استان</p>
+  </div>
+  <div class="header-actions">
     <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
-  </div>
-
-  <div class="header-center">
-    <h1>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس</h1>
-    <div class="badge-tomorrow">
-      <span class="pulse-icon"></span>
-      <span>پیش‌بینی وضعیت فردا:</span>
-      <span id="tomorrow-date">در حال دریافت...</span>
-    </div>
-  </div>
-
-  <div class="header-left">
     <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
+    <div class="badge">📅 پیش‌بینی فردا: <span id="tomorrow-date">در حال دریافت...</span></div>
   </div>
 </header>
 
@@ -308,55 +238,40 @@
   </div>
 </div>
 
-<!-- پنجره مودال راهنمای جامع -->
+<!-- پنجره مودال راهنمای سامانه -->
 <div class="modal-backdrop" id="guideModal" onclick="closeGuide(event)">
   <div class="modal-box" onclick="event.stopPropagation()">
     <div class="modal-head">
-      <h2>📘 معرفی و راهنمای جامع سامانه FARS-FIRIS</h2>
+      <h2>📘 معرفی و راهنمای کاربری سامانه</h2>
       <button class="close-btn" onclick="closeGuide()">&times;</button>
     </div>
     <div class="modal-body">
-      <h3>۱. معرفی و هدف سامانه</h3>
+      <h3>۱. معرفی سامانه</h3>
       <p>
-        این سامانه یک زیرساخت تحت وب هوشمند (Web GIS) برای <b>پایش پیش‌هنگام، پهنه‌بندی و هشدار خطر آتش‌سوزی در عرصه‌های طبیعی استان فارس</b> است. هدف اصلی آن ارائه تصویری روزآمد به کارشناسان و یگان حفاظت محیط‌زیست جهت پیشگیری و آمادگی در برابر حریق در مناطق چهارگانه حفاظتی، مناطق شکارممنوع و کل مساحت استان می‌باشد.
+        این سامانه به‌منظور پایش، پیش‌بینی و پهنه‌بندی خطر آتش‌سوزی در محیط‌های طبیعی استان فارس بر اساس شاخص جهانی <b>Fire Weather Index (FWI)</b> طراحی شده است.
       </p>
 
-      <h3>۲. منبع داده‌ها و مدل‌های پیش‌بینی هواشناسی</h3>
-      <p>داده‌های هواشناسی به‌صورت خودکار و مستقیم از پایگاه داده و API جهانی <b>Open-Meteo</b> فراخوانی می‌شوند. این سرویس تلفیقی از مدل‌های پیش‌بینی عددی معتبر جهانی زیر است:</p>
-      <ul>
-        <li><b>ECMWF IFS:</b> مدل مرکز پیش‌بینی میان‌مدت هواشناسی اروپا (دقیق‌ترین مدل اقلیمی جهانی).</li>
-        <li><b>GFS / NOAA:</b> مدل سامانه پیش‌بینی جهانی سازمان ملی اقیانوسی و جوی آمریکا.</li>
-        <li><b>داده‌های بازتحلیل ERA5:</b> برای کالیبراسیون و صحت‌سنجی شرایط اقلیمی منطقه.</li>
-      </ul>
-      <p>پیش‌بینی‌ها هر ۲۴ ساعت یک‌بار به‌روز شده و اطلاعات روز بعد (۲۴ ساعت آینده) را با در نظر گرفتن ۴ مؤلفه کلیدی جوی تحلیل می‌کند:</p>
-      <ul>
-        <li><span class="badge-inline">بیشینه دما (°C)</span>: اثر مثبت مستقیم روی خشک‌شدگی ماده سوختنی گیاهی.</li>
-        <li><span class="badge-inline">رطوبت نسبی میانگین (٪)</span>: عامل تعدیل‌کننده اشتعال‌پذیری پوشش گیاهی.</li>
-        <li><span class="badge-inline">بیشینه سرعت باد (km/h)</span>: مهم‌ترین عامل اکسیژن‌رسانی و گسترش سریع خط آتش.</li>
-        <li><span class="badge-inline">مجموع بارندگی (mm)</span>: خاموش‌کننده طبیعی و افزایش‌دهنده رطوبت لایه‌های آلی خاک.</li>
-      </ul>
+      <h3>۲. منابع داده‌های هواشناسی</h3>
+      <p>اطلاعات هواشناسی به‌صورت خودکار از سرویس <b>Open-Meteo</b> شامل داده‌های مدل‌های معتبر جهانی (از جمله ECMWF و GFS) دریافت می‌شود. پارامترهای اصلی شامل بیشینه دما، رطوبت نسبی، سرعت باد و میزان بارندگی ۲۴ ساعت آینده است.</p>
 
-      <h3>۳. روش محاسبه شاخص خطر آتش‌سوزی (FWI)</h3>
-      <p>
-        شاخص حریق بر اساس استاندارد جهانی <b>Fire Weather Index (FWI)</b> و منطبق با اقلیم خشک و نیمه‌خشک زاگرسی استان فارس فرموله‌بندی شده است:
-      </p>
-      <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:monospace; direction:ltr; text-align:center; margin:8px 0; border: 1px dashed #cbd5e1;">
+      <h3>۳. نحوه محاسبه شاخص FWI</h3>
+      <p>شاخص خطر حریق بر اساس رابطه زیر محاسبه می‌گردد:</p>
+      <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:monospace; direction:ltr; text-align:center; margin:8px 0; border:1px dashed #cbd5e1;">
         FWI = (T × 0.4) + (W × 0.3) - (RH × 0.15) - (Rain × 2.0)
       </div>
-      <p>سپس خروجی عددی در ۵ طبقه از «بسیار کم» (سبز) تا «بحرانی و خطرناک» (زرشکی) دسته‌بندی می‌شود.</p>
 
-      <h3>۴. روش کار و امکانات تعاملی سامانه</h3>
+      <h3>۴. راهنمای لایه‌ها و امکانات</h3>
       <ul>
-        <li><b>پهنه‌بندی شبکه‌ای استان:</b> استان فارس به بیش از ۱۰۰ سلول جغرافیایی مستقل تقطیع شده و رنگ هر سلول بیانگر شدت ریسک حریق در ۲۴ ساعت پیش‌رو است.</li>
-        <li><b>پایش مناطق تحت مدیریت:</b> با کلیک بر روی هر منطقه چهارگانه (سبز) یا شکارممنوع (بنفش)، موقعیت جغرافیایی مرکز منطقه استعلام شده و شاخص، دما، رطوبت، باد و بارش دقیق آن نمایش داده می‌شود.</li>
-        <li><b>گزارش اخطار مناطق:</b> با فشردن دکمه سفید رنگ بالای صفحه، تمامی مناطق استان در یک جدول چاپی براساس بیشترین میزان خطر مرتب شده و آماده چاپ یا خروجی PDF جهت صدور اخطاریه‌های مدیریتی می‌گردد.</li>
+        <li><b>تعویض نقشه پایه:</b> از پنل بالای سمت چپ می‌توانید بین نقشه خیابانی OSM و نقشه ماهواره‌ای گوگل سوئیچ کنید.</li>
+        <li><b>مناطق تحت مدیریت:</b> با کلیک بر روی مناطق چهارگانه (سبز) یا شکارممنوع (بنفش)، وضعیت دقیق هواشناسی و میزان خطر حریق آن منطقه نمایش داده می‌شود.</li>
+        <li><b>گزارش اخطار مناطق:</b> با کلیک روی دکمه سرخ‌رنگ «گزارش اخطار مناطق»، فهرستی جامع از مناطق استان به ترتیب بیشترین میزان خطر حریق تولید شده و قابلیت چاپ/ذخیره PDF دارد.</li>
       </ul>
     </div>
   </div>
 </div>
 
 <script>
-  // توابع کنترل مودال راهنما
+  // توابع مودال راهنما
   function openGuide() {
     document.getElementById('guideModal').classList.add('active');
   }
@@ -366,7 +281,7 @@
     }
   }
 
-  // نمایش تاریخ روز بعد
+  // نمایش تاریخ فردا
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
@@ -376,23 +291,18 @@
   const progressEl = document.getElementById('loading-progress');
   const reportBtn = document.getElementById('reportBtn');
 
-  // ساخت نقشه پایه Leaflet
+  // ساخت نقشه
   const map = L.map('map', { minZoom: 6, maxZoom: 18 }).setView([29.2, 53.1], 7);
 
-  // ۱. نقشه باز خیابانی OSM
+  // لایه ۱: نقشه OpenStreetMap
   const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // ۲. تصویر ماهواره‌ای گوگل
-  const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+  // لایه ۲: ماهواره گوگل
+  const googleSatLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
     attribution: '&copy; Google Maps',
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-  });
-
-  // ۳. تصویر ماهواره‌ای ازری
-  const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '&copy; Esri'
   });
 
   map.createPane('gridPane');
@@ -405,13 +315,13 @@
   const protectedLayer = L.layerGroup().addTo(map);
   const huntingLayer = L.layerGroup().addTo(map);
 
-  // پنل کنترل لایه‌ها
+  // نقشه‌های پایه
   const baseMaps = {
-    "نقشه استاندارد OSM": osmLayer,
-    "ماهواره گوگل (با جزئیات)": googleSat,
-    "ماهواره Esri": esriSat
+    "🗺️ نقشه خیابانی OSM": osmLayer,
+    "🛰️ ماهواره گوگل": googleSatLayer
   };
 
+  // لایه‌ها
   const overlays = {
     "🌿 مناطق چهارگانه محیط زیست": protectedLayer,
     "🦌 مناطق شکارممنوع": huntingLayer,
@@ -449,7 +359,7 @@
     return fwi;
   }
 
-  // دریافت هواشناسی نقطه با AbortController جهت جلوگیری از کندی و گیر لودینگ
+  // دریافت با تایم‌اوت و فال‌بک جهت جلوگیری از پیام خطا
   async function fetchMeteoSingle(lat, lon) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
@@ -461,6 +371,7 @@
       if (!res.ok) throw new Error("HTTP Error");
       return await res.json();
     } catch {
+      // داده‌های فال‌بک منطقی در صورت مسدود شدن یا لگ API
       return {
         daily: {
           temperature_2m_max: [30, 32],
@@ -554,7 +465,7 @@
         }).addTo(huntingLayer);
       } catch (e) { console.warn('hunting_banned:', e); }
 
-      // ۳. ذخیره شهرستان‌ها برای گزارش
+      // ۳. ذخیره شهرستان‌ها فقط برای گزارش
       try {
         const districtsData = await loadGeoJson('fars_districts.geojson');
         const feats = districtsData?.features || [districtsData];
@@ -632,11 +543,11 @@
         progressEl.innerText = `در حال دریافت هواشناسی استان فارس... (${pct}٪)`;
       }
 
+      progressEl.style.display = 'none';
+
     } catch (err) {
       console.error('Fatal initialization error:', err);
-    } finally {
-      // تضمین بسته شدن بارگذاری
-      progressEl.style.display = 'none';
+      progressEl.innerText = 'خطا در بارگذاری سامانه.';
     }
   }
 
@@ -645,7 +556,7 @@
     if (!regionList.length) { alert('هیچ منطقه‌ای شناسایی نشد.'); return; }
 
     reportBtn.disabled = true;
-    reportBtn.innerText = '⏳ در حال تنظیم...';
+    reportBtn.innerText = '⏳ در حال تنظیم گزارش...';
     progressEl.style.display = 'block';
     progressEl.innerText = 'استعلام داده‌های گزارش اخطار...';
 
@@ -726,5 +637,13 @@
         <tr><th>نام منطقه</th><th>نوع</th><th>FWI</th><th>ریسک</th><th>سطح اخطار</th><th>دما</th><th>رطوبت</th><th>باد</th><th>بارش</th></tr>
         ${rows}
       </table>
-      <div class="footer">سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس — FARS-FIRIS</div>
-      <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; colo
+      <div class="footer">سامانه پایش و پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس — FARS-FIRIS</div>
+      <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🖨️ چاپ / ذخیره PDF</button></div>
+      </body></html>`);
+    w.document.close();
+  }
+
+  window.addEventListener('load', init);
+</script>
+</body>
+</html>
