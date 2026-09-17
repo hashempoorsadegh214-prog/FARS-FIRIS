@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>سامانه هوشمند پیش بینی و پهنه بندی حریق در استان فارس</title>
+  <title>سامانه پایش و پهنه‌بندی خطر حریق (FWI) استان فارس</title>
 
   <!-- Leaflet & Turf.js -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,115 +17,89 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-    /* هدر قرمز */
     header {
-      background: #b91c1c;
+      background: #ffffff;
       padding: 10px 20px;
-      border-bottom: 2px solid #991b1b;
+      border-bottom: 2px solid #e2e8f0;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
       align-items: center;
-      text-align: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
       z-index: 1000;
-      gap: 3px;
+      gap: 10px;
     }
-    .header-title h1 { font-size: 1.15rem; color: #ffffff; font-weight: bold; }
-    .header-title p { font-size: 0.78rem; color: #fee2e2; margin-top: 2px; }
+    .header-title h1 { font-size: 1.05rem; color: #c2410c; }
+    .header-title p { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
 
-    /* تابلو تاریخ زیر عنوان */
     .badge {
-      background: rgba(0, 0, 0, 0.25);
+      background: #ea580c;
       color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      padding: 3px 14px;
+      padding: 6px 14px;
       border-radius: 20px;
       font-weight: bold;
-      font-size: 0.8rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      font-size: 0.85rem;
+      box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
       white-space: nowrap;
-      margin-top: 4px;
-      display: inline-block;
     }
 
-    /* جایگاه دکمه‌ها در کنار بخش لایه‌ها */
-    .map-action-buttons {
+    .report-btn {
+      background: #b91c1c;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      font-family: 'Vazirmatn', sans-serif;
+      box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .report-btn:hover { background: #991b1b; }
+    .report-btn:disabled { background: #9ca3af; cursor: wait; }
+
+    /* دکمه جدید راهنما */
+    .guide-btn {
+      background: #0284c7;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      font-family: 'Vazirmatn', sans-serif;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .guide-btn:hover { background: #0369a1; }
+
+    #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
+
+    /* راهنمای نقشه */
+    .legend {
       position: absolute;
-      top: 10px;
-      left: 265px;
-      display: flex;
-      gap: 8px;
+      bottom: 25px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 16px;
+      border-radius: 10px;
       z-index: 999;
-      align-items: center;
+      font-size: 0.82rem;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      line-height: 1.8;
+      max-width: 320px;
     }
-
-    .report-btn {
-      background: #b91c1c;
-      color: #ffffff;
-      border: 1px solid #991b1b;
-      cursor: pointer;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.83rem;
-      font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    .report-btn:hover { background: #991b1b; }
-    .report-btn:disabled { background: #9ca3af; cursor: wait; }
-
-    .guide-btn {
-      background: #0284c7;
-      color: #ffffff;
-      border: 1px solid #0369a1;
-      cursor: pointer;
-      padding: 7px 65px;
-      display: flex;
-      gap: 8px;
-      z-index: 999;
-      align-items: center;
-    }
-
-    .report-btn {
-      background: #b91c1c;
-      color: #ffffff;
-      border: 1px solid #991b1b;
-      cursor: pointer;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.83rem;
-      font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    .report-btn:hover { background: #991b1b; }
-    .report-btn:disabled { background: #9ca3af; cursor: wait; }
-
-    .guide-btn {
-      background: #0284c7;
-      color: #ffffff;
-      border: 1px solid #0369a1;
-      cursor: pointer;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.83rem;
-      font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      display: flex;
-      align-items: center;
-      gap:dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
+    .legend-title { font-weight: bold; margin-bottom: 5px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
 
     /* پاپ‌آپ */
     .leaflet-popup-content-wrapper {
@@ -171,7 +145,7 @@
       z-index: 1000;
     }
 
-    /* پنجره مودال راهنما */
+    /* استایل پنجره مودال راهنما */
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -234,34 +208,23 @@
     .modal-body ul { padding-right: 20px; margin-bottom: 10px; }
     .modal-body li { margin-bottom: 4px; }
     .modal-body p { margin-bottom: 8px; text-align: justify; }
-
-    @media (max-width: 768px) {
-      .map-action-buttons {
-        left: 10px;
-        top: auto;
-        bottom: 25px;
-        flex-direction: column;
-      }
-    }
   </style>
 </head>
 
 <body>
 <header>
   <div class="header-title">
-    <h1>سامانه هوشمند پیش بینی و پهنه بندی حریق در استان فارس</h1>
+    <h1>سامانه پایش آنلاین حریق و شاخص FWI استان فارس</h1>
     <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و پهنه‌بندی شبکه‌ای استان</p>
+  </div>
+  <div class="header-actions">
+    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
+    <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
     <div class="badge">📅 پیش‌بینی فردا: <span id="tomorrow-date">در حال دریافت...</span></div>
   </div>
 </header>
 
 <div style="position: relative; flex: 1;">
-  <!-- دکمه‌ها چسبیده به بخش لایه‌ها -->
-  <div class="map-action-buttons">
-    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
-    <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
-  </div>
-
   <div id="loading-progress">در حال آماده‌سازی سامانه...</div>
   <div id="map"></div>
 
@@ -408,6 +371,7 @@
       if (!res.ok) throw new Error("HTTP Error");
       return await res.json();
     } catch {
+      // داده‌های فال‌بک منطقی در صورت مسدود شدن یا لگ API
       return {
         daily: {
           temperature_2m_max: [30, 32],
@@ -673,7 +637,7 @@
         <tr><th>نام منطقه</th><th>نوع</th><th>FWI</th><th>ریسک</th><th>سطح اخطار</th><th>دما</th><th>رطوبت</th><th>باد</th><th>بارش</th></tr>
         ${rows}
       </table>
-      <div class="footer">سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق در استان فارس</div>
+      <div class="footer">سامانه پایش و پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس — FARS-FIRIS</div>
       <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🖨️ چاپ / ذخیره PDF</button></div>
       </body></html>`);
     w.document.close();
