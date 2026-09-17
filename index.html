@@ -17,7 +17,7 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-    /* هدر قرمز با عنوان و تابلو در وسط */
+    /* هدر قرمز با عنوان وسط و دکمه‌ها در طرفین */
     header {
       background: #b91c1c;
       color: #ffffff;
@@ -85,8 +85,10 @@
       display: flex;
       justify-content: flex-end;
       align-items: center;
+      gap: 10px;
     }
 
+    /* دکمه‌های هدر */
     .report-btn {
       background: #ffffff;
       color: #b91c1c;
@@ -110,6 +112,26 @@
       background: #e2e8f0;
       color: #94a3b8;
       cursor: wait;
+    }
+
+    .guide-btn {
+      background: #0284c7;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .guide-btn:hover {
+      background: #0369a1;
+      transform: translateY(-1px);
     }
 
     #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
@@ -175,6 +197,79 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       z-index: 1000;
     }
+
+    /* مدال معرفی و راهنما */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+    .modal-backdrop.active { display: flex; }
+    .modal-box {
+      background: #ffffff;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      border-radius: 14px;
+      box-shadow: 0 20px 30px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      direction: rtl;
+    }
+    .modal-head {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-head h2 { font-size: 1.05rem; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+    .close-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: #64748b;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .close-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 0.86rem;
+      line-height: 1.9;
+      color: #334155;
+    }
+    .modal-body h3 {
+      font-size: 0.95rem;
+      color: #b91c1c;
+      margin: 14px 0 6px 0;
+      border-right: 3px solid #b91c1c;
+      padding-right: 8px;
+    }
+    .modal-body h3:first-child { margin-top: 0; }
+    .modal-body ul { padding-right: 20px; margin-bottom: 10px; }
+    .modal-body li { margin-bottom: 4px; }
+    .modal-body p { margin-bottom: 8px; text-align: justify; }
+    .badge-inline {
+      display: inline-block;
+      padding: 1px 7px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      color: #0f172a;
+    }
   </style>
 </head>
 
@@ -193,7 +288,9 @@
     </div>
   </div>
 
-  <div class="header-right"></div>
+  <div class="header-right">
+    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
+  </div>
 </header>
 
 <div style="position: relative; flex: 1;">
@@ -210,7 +307,64 @@
   </div>
 </div>
 
+<!-- مودال معرفی و راهنما -->
+<div class="modal-backdrop" id="guideModal" onclick="closeGuide(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2>📘 معرفی و راهنمای جامع سامانه FARS-FIRIS</h2>
+      <button class="close-btn" onclick="closeGuide()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <h3>۱. معرفی و هدف سامانه</h3>
+      <p>
+        این سامانه یک زیرساخت تحت وب هوشمند (Web GIS) برای <b>پایش پیش‌هنگام، پهنه‌بندی و هشدار خطر آتش‌سوزی در عرصه‌های طبیعی استان فارس</b> است. هدف اصلی آن ارائه تصویری روزآمد به کارشناسان و یگان حفاظت محیط‌زیست جهت پیشگیری و آمادگی در برابر حریق در مناطق چهارگانه حفاظتی، مناطق شکارممنوع و کل مساحت استان می‌باشد.
+      </p>
+
+      <h3>۲. منبع داده‌ها و مدل‌های پیش‌بینی هواشناسی</h3>
+      <p>داده‌های هواشناسی به‌صورت خودکار و مستقیم از پایگاه داده و API جهانی <b>Open-Meteo</b> فراخوانی می‌شوند. این سرویس تلفیقی از مدل‌های پیش‌بینی عددی معتبر جهانی زیر است:</p>
+      <ul>
+        <li><b>ECMWF IFS:</b> مدل مرکز پیش‌بینی میان‌مدت هواشناسی اروپا (دقیق‌ترین مدل اقلیمی جهانی).</li>
+        <li><b>GFS / NOAA:</b> مدل سامانه پیش‌بینی جهانی سازمان ملی اقیانوسی و جوی آمریکا.</li>
+        <li><b>داده‌های بازتحلیل ERA5:</b> برای کالیبراسیون و صحت‌سنجی شرایط اقلیمی منطقه.</li>
+      </ul>
+      <p>پیش‌بینی‌ها هر ۲۴ ساعت یک‌بار به‌روز شده و اطلاعات روز بعد (۲۴ ساعت آینده) را با در نظر گرفتن ۴ مؤلفه کلیدی جوی تحلیل می‌کند:</p>
+      <ul>
+        <li><span class="badge-inline">بیشینه دما (°C)</span>: اثر مثبت مستقیم روی خشک‌شدگی ماده سوختنی گیاهی.</li>
+        <li><span class="badge-inline">رطوبت نسبی میانگین (٪)</span>: عامل تعدیل‌کننده اشتعال‌پذیری پوشش گیاهی.</li>
+        <li><span class="badge-inline">بیشینه سرعت باد (km/h)</span>: مهم‌ترین عامل اکسیژن‌رسانی و گسترش سریع خط آتش.</li>
+        <li><span class="badge-inline">مجموع بارندگی (mm)</span>: خاموش‌کننده طبیعی و افزایش‌دهنده رطوبت لایه‌های آلی خاک.</li>
+      </ul>
+
+      <h3>۳. روش محاسبه شاخص خطر آتش‌سوزی (FWI)</h3>
+      <p>
+        شاخص حریق بر اساس استاندارد جهانی <b>Fire Weather Index (FWI)</b> و منطبق با اقلیم خشک و نیمه‌خشک زاگرسی استان فارس فرموله‌بندی شده است:
+      </p>
+      <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:monospace; direction:ltr; text-align:center; margin:8px 0; border: 1px dashed #cbd5e1;">
+        FWI = (T × 0.4) + (W × 0.3) - (RH × 0.15) - (Rain × 2.0)
+      </div>
+      <p>سپس خروجی عددی در ۵ طبقه از «بسیار کم» (سبز) تا «بحرانی و خطرناک» (زرشکی) دسته‌بندی می‌شود.</p>
+
+      <h3>۴. روش کار و امکانات تعاملی سامانه</h3>
+      <ul>
+        <li><b>پهنه‌بندی شبکه‌ای استان:</b> استان فارس به بیش از ۱۰۰ سلول جغرافیایی مستقل تقطیع شده و رنگ هر سلول بیانگر شدت ریسک حریق در ۲۴ ساعت پیش‌رو است.</li>
+        <li><b>پایش مناطق تحت مدیریت:</b> با کلیک بر روی هر منطقه چهارگانه (سبز) یا شکارممنوع (بنفش)، موقعیت جغرافیایی مرکز منطقه استعلام شده و شاخص، دما، رطوبت، باد و بارش دقیق آن نمایش داده می‌شود.</li>
+        <li><b>گزارش اخطار مناطق:</b> با فشردن دکمه سفید رنگ بالای صفحه، تمامی مناطق استان در یک جدول چاپی براساس بیشترین میزان خطر مرتب شده و آماده چاپ یا خروجی PDF جهت صدور اخطاریه‌های مدیریتی می‌گردد.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <script>
+  // توابع کنترل مودال راهنما
+  function openGuide() {
+    document.getElementById('guideModal').classList.add('active');
+  }
+  function closeGuide(e) {
+    if (!e || e.target.id === 'guideModal' || e.target.classList.contains('close-btn')) {
+      document.getElementById('guideModal').classList.remove('active');
+    }
+  }
+
   // نمایش تاریخ روز بعد
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -572,12 +726,4 @@
         ${rows}
       </table>
       <div class="footer">سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس — FARS-FIRIS</div>
-      <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🖨️ چاپ / ذخیره PDF</button></div>
-      </body></html>`);
-    w.document.close();
-  }
-
-  window.addEventListener('load', init);
-</script>
-</body>
-</html>
+      <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; backgrou
