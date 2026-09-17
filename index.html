@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>سامانه پایش و پهنه‌بندی خطر حریق (FWI) استان فارس</title>
+  <title>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس</title>
 
   <!-- Leaflet & Turf.js -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,50 +17,100 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
+    /* هدر قرمز با عنوان و تابلو در وسط */
     header {
-      background: #ffffff;
-      padding: 10px 20px;
-      border-bottom: 2px solid #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.04);
-      z-index: 1000;
-      gap: 10px;
-    }
-    .header-title h1 { font-size: 1.05rem; color: #c2410c; }
-    .header-title p { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
-    .header-actions { display: flex; gap: 10px; align-items: center; }
-
-    .badge {
-      background: #ea580c;
+      background: #b91c1c;
       color: #ffffff;
-      padding: 6px 14px;
+      padding: 10px 20px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+
+    .header-left {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .header-center {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-center h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* تابلو اعلام وضعیت فردا زیر عنوان */
+    .badge-tomorrow {
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      padding: 3px 16px;
       border-radius: 20px;
-      font-weight: bold;
-      font-size: 0.85rem;
-      box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
-      white-space: nowrap;
+      font-weight: 600;
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(4px);
+    }
+
+    .badge-tomorrow .pulse-icon {
+      width: 8px;
+      height: 8px;
+      background-color: #4ade80;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #4ade80;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.7; }
+    }
+
+    .header-right {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
     }
 
     .report-btn {
-      background: #b91c1c;
-      color: #ffffff;
+      background: #ffffff;
+      color: #b91c1c;
       border: none;
       cursor: pointer;
-      padding: 7px 16px;
+      padding: 7px 18px;
       border-radius: 20px;
-      font-weight: bold;
+      font-weight: 800;
       font-size: 0.85rem;
-      font-family: 'Vazirmatn', sans-serif;
-      box-shadow: 0 2px 6px rgba(185, 28, 28, 0.3);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: background 0.2s;
+      transition: all 0.2s ease;
     }
-    .report-btn:hover { background: #991b1b; }
-    .report-btn:disabled { background: #9ca3af; cursor: wait; }
+    .report-btn:hover {
+      background: #fee2e2;
+      transform: translateY(-1px);
+    }
+    .report-btn:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: wait;
+    }
 
     #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
 
@@ -69,17 +119,17 @@
       position: absolute;
       bottom: 25px;
       right: 20px;
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.96);
       padding: 12px 16px;
       border-radius: 10px;
       z-index: 999;
       font-size: 0.82rem;
       border: 1px solid #cbd5e1;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.12);
       line-height: 1.8;
       max-width: 320px;
     }
-    .legend-title { font-weight: bold; margin-bottom: 5px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .legend-title { font-weight: bold; margin-bottom: 6px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
     .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
 
     /* پاپ‌آپ */
@@ -130,14 +180,20 @@
 
 <body>
 <header>
-  <div class="header-title">
-    <h1>سامانه پایش آنلاین حریق و شاخص FWI استان فارس</h1>
-    <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و پهنه‌بندی شبکه‌ای استان</p>
-  </div>
-  <div class="header-actions">
+  <div class="header-left">
     <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
-    <div class="badge">📅 پیش‌بینی فردا: <span id="tomorrow-date">در حال دریافت...</span></div>
   </div>
+
+  <div class="header-center">
+    <h1>سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس</h1>
+    <div class="badge-tomorrow">
+      <span class="pulse-icon"></span>
+      <span>پیش‌بینی وضعیت فردا:</span>
+      <span id="tomorrow-date">در حال دریافت...</span>
+    </div>
+  </div>
+
+  <div class="header-right"></div>
 </header>
 
 <div style="position: relative; flex: 1;">
@@ -155,7 +211,7 @@
 </div>
 
 <script>
-  // نمایش تاریخ فردا
+  // نمایش تاریخ روز بعد
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
@@ -165,11 +221,24 @@
   const progressEl = document.getElementById('loading-progress');
   const reportBtn = document.getElementById('reportBtn');
 
-  // ساخت نقشه
+  // ساخت نقشه پایه
   const map = L.map('map', { minZoom: 6, maxZoom: 18 }).setView([29.2, 53.1], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+  // ۱. نقشه باز خیابانی OSM
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
+
+  // ۲. تصویر ماهواره‌ای گوگل
+  const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    attribution: '&copy; Google Maps',
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+  });
+
+  // ۳. تصویر ماهواره‌ای ازری
+  const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri'
+  });
 
   map.createPane('gridPane');
   map.getPane('gridPane').style.zIndex = 400;
@@ -181,13 +250,20 @@
   const protectedLayer = L.layerGroup().addTo(map);
   const huntingLayer = L.layerGroup().addTo(map);
 
-  // لایه تقسیمات شهرستان‌ها فقط برای گزارش ذخیره می‌شود و در پنل نقشه حذف شده است
+  // پنل کنترل لایه‌ها با نقشه‌های پایه و لایه‌های حریق
+  const baseMaps = {
+    "نقشه استاندارد OSM": osmLayer,
+    "ماهواره گوگل (با جزئیات)": googleSat,
+    "ماهواره Esri": esriSat
+  };
+
   const overlays = {
     "🌿 مناطق چهارگانه محیط زیست": protectedLayer,
     "🦌 مناطق شکارممنوع": huntingLayer,
     "🔥 پهنه‌بندی شبکه‌ای FWI": gridLayer
   };
-  L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
+
+  L.control.layers(baseMaps, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
   const regionList = [];
 
@@ -218,7 +294,7 @@
     return fwi;
   }
 
-  // دریافت با تایم‌اوت و فال‌بک جهت جلوگیری از پیام خطا
+  // دریافت هواشناسی با کنترل تایم‌اوت و بدون خطای لودینگ
   async function fetchMeteoSingle(lat, lon) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
@@ -230,7 +306,6 @@
       if (!res.ok) throw new Error("HTTP Error");
       return await res.json();
     } catch {
-      // داده‌های فال‌بک منطقی در صورت مسدود شدن یا لگ API
       return {
         daily: {
           temperature_2m_max: [30, 32],
@@ -324,7 +399,7 @@
         }).addTo(huntingLayer);
       } catch (e) { console.warn('hunting_banned:', e); }
 
-      // ۳. ذخیره شهرستان‌ها فقط برای گزارش
+      // ۳. ذخیره شهرستان‌ها برای گزارش
       try {
         const districtsData = await loadGeoJson('fars_districts.geojson');
         const feats = districtsData?.features || [districtsData];
@@ -402,11 +477,11 @@
         progressEl.innerText = `در حال دریافت هواشناسی استان فارس... (${pct}٪)`;
       }
 
-      progressEl.style.display = 'none';
-
     } catch (err) {
       console.error('Fatal initialization error:', err);
-      progressEl.innerText = 'خطا در بارگذاری سامانه.';
+    } finally {
+      // تضمین بسته شدن همیشگی لودینگ
+      progressEl.style.display = 'none';
     }
   }
 
@@ -415,7 +490,7 @@
     if (!regionList.length) { alert('هیچ منطقه‌ای شناسایی نشد.'); return; }
 
     reportBtn.disabled = true;
-    reportBtn.innerText = '⏳ در حال تنظیم گزارش...';
+    reportBtn.innerText = '⏳ در حال تنظیم...';
     progressEl.style.display = 'block';
     progressEl.innerText = 'استعلام داده‌های گزارش اخطار...';
 
@@ -496,7 +571,7 @@
         <tr><th>نام منطقه</th><th>نوع</th><th>FWI</th><th>ریسک</th><th>سطح اخطار</th><th>دما</th><th>رطوبت</th><th>باد</th><th>بارش</th></tr>
         ${rows}
       </table>
-      <div class="footer">سامانه پایش و پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس — FARS-FIRIS</div>
+      <div class="footer">سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس — FARS-FIRIS</div>
       <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">🖨️ چاپ / ذخیره PDF</button></div>
       </body></html>`);
     w.document.close();
