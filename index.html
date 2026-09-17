@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه پایش و پهنه‌بندی خطر حریق FWI استان فارس</title>
+    <title>سامانه پایش و پهنه‌بندی شاخص خطر حریق (FWI) استان فارس</title>
 
     <!-- Leaflet & Turf.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -120,14 +120,14 @@
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. نقشه پایه OpenStreetMap رایگان بدون باگ API Carto
+        // ۲. نقشه پایه OpenStreetMap رایگان بدون محدودیت لایسنس
         const map = L.map('map').setView([29.3, 53.4], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // ۳. گروه‌های لایه مجزا برای مدیریت بهتر
+        // ۳. لایه‌ها
         const fwiLayer = L.layerGroup().addTo(map);
         const protectedLayer = L.layerGroup().addTo(map);
         const huntingLayer = L.layerGroup().addTo(map);
@@ -141,7 +141,7 @@
         };
         L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
-        // تابع تعیین رنگ FWI
+        // تابع رنگ‌بندی FWI
         function getColor(fwi) {
             if (fwi < 5)  return '#22c55e';
             if (fwi < 15) return '#eab308';
@@ -172,7 +172,6 @@
                 if (!resFars.ok) throw new Error('فایل fars.geojson پیدا نشد!');
                 const farsData = await resFars.json();
 
-                // ترسیم خط مرزی استان
                 L.geoJSON(farsData, {
                     style: { color: '#f8fafc', weight: 2, fill: false, dashArray: '6, 4', opacity: 0.9 }
                 }).addTo(provinceLayer);
@@ -204,14 +203,14 @@
                         }).addTo(huntingLayer);
                     }
                 } catch (e) {
-                    console.warn('لایه‌های مناطق حفاظتی بارگذاری نشدند:', e);
+                    console.warn('لایه‌های مناطق بارگذاری نشدند:', e);
                 }
 
-                // ج) ساخت شبکه منظم متناسب با ابعاد استان فارس
+                // ج) ساخت شبکه کل گستره استان فارس (عرض ۲۶.۵ تا ۳۲.۲ و طول ۵۰.۰ تا ۵۶.۵)
                 const step = 0.18;
                 const allGridCells = [];
-                for (let lat = 27.0; lat <= 31.8; lat += step) {
-                    for (let lon = 50.4; lon <= 55.6; lon += step) {
+                for (let lat = 26.5; lat <= 32.2; lat += step) {
+                    for (let lon = 50.0; lon <= 56.5; lon += step) {
                         allGridCells.push({
                             latCenter: parseFloat((lat + step / 2).toFixed(4)),
                             lonCenter: parseFloat((lon + step / 2).toFixed(4)),
@@ -220,7 +219,7 @@
                     }
                 }
 
-                // د) فیلتر مکانی با تقاطع دقیق پلی‌گون سلول با مرز استان
+                // د) فیلتر دقیق بر اساس تقاطع کامل با مرز استان
                 progressEl.innerText = 'برش شبکه و استخراج محدوده کل استان فارس...';
                 const provinceCells = allGridCells.filter(cell => {
                     const poly = cellToPolygon(cell);
@@ -272,7 +271,7 @@
                             `<p style="font-size:0.8rem;">🌡️ دمای بیشینه: ${temp} °C</p>` +
                             `<p style="font-size:0.8rem;">💧 رطوبت میانگین: ${rh}%</p>` +
                             `<p style="font-size:0.8rem;">💨 سرعت باد: ${wind} km/h</p>` +
-                            `<p style="font-size:0.8rem;">🌧️ بارش: ${rain || 0} mm</p>` +
+                            `<p style="font-size:0.8rem;">🌧️ بارش: ${rain} mm</p>` +
                             `</div>`
                         );
                     });
