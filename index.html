@@ -17,7 +17,7 @@
     * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-    /* هدر قرمز با عنوان وسط و دکمه‌ها در طرفین */
+    /* هدر قرمز یک‌دست با ساختار ۳ ستونه متوازن */
     header {
       background: #b91c1c;
       color: #ffffff;
@@ -29,10 +29,11 @@
       z-index: 1000;
     }
 
-    .header-left {
+    .header-right {
       display: flex;
       justify-content: flex-start;
       align-items: center;
+      gap: 10px;
     }
 
     .header-center {
@@ -81,7 +82,7 @@
       100% { transform: scale(0.9); opacity: 0.7; }
     }
 
-    .header-right {
+    .header-left {
       display: flex;
       justify-content: flex-end;
       align-items: center;
@@ -198,7 +199,7 @@
       z-index: 1000;
     }
 
-    /* مدال معرفی و راهنما */
+    /* استایل مودال راهنما */
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -275,8 +276,8 @@
 
 <body>
 <header>
-  <div class="header-left">
-    <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
+  <div class="header-right">
+    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
   </div>
 
   <div class="header-center">
@@ -288,8 +289,8 @@
     </div>
   </div>
 
-  <div class="header-right">
-    <button class="guide-btn" onclick="openGuide()">📘 معرفی و راهنما</button>
+  <div class="header-left">
+    <button class="report-btn" id="reportBtn" onclick="generateAlertReport()">⚠️ گزارش اخطار مناطق</button>
   </div>
 </header>
 
@@ -307,7 +308,7 @@
   </div>
 </div>
 
-<!-- مودال معرفی و راهنما -->
+<!-- پنجره مودال راهنمای جامع -->
 <div class="modal-backdrop" id="guideModal" onclick="closeGuide(event)">
   <div class="modal-box" onclick="event.stopPropagation()">
     <div class="modal-head">
@@ -375,7 +376,7 @@
   const progressEl = document.getElementById('loading-progress');
   const reportBtn = document.getElementById('reportBtn');
 
-  // ساخت نقشه پایه
+  // ساخت نقشه پایه Leaflet
   const map = L.map('map', { minZoom: 6, maxZoom: 18 }).setView([29.2, 53.1], 7);
 
   // ۱. نقشه باز خیابانی OSM
@@ -404,7 +405,7 @@
   const protectedLayer = L.layerGroup().addTo(map);
   const huntingLayer = L.layerGroup().addTo(map);
 
-  // پنل کنترل لایه‌ها با نقشه‌های پایه و لایه‌های حریق
+  // پنل کنترل لایه‌ها
   const baseMaps = {
     "نقشه استاندارد OSM": osmLayer,
     "ماهواره گوگل (با جزئیات)": googleSat,
@@ -448,7 +449,7 @@
     return fwi;
   }
 
-  // دریافت هواشناسی با کنترل تایم‌اوت و بدون خطای لودینگ
+  // دریافت هواشناسی نقطه با AbortController جهت جلوگیری از کندی و گیر لودینگ
   async function fetchMeteoSingle(lat, lon) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
@@ -634,7 +635,7 @@
     } catch (err) {
       console.error('Fatal initialization error:', err);
     } finally {
-      // تضمین بسته شدن همیشگی لودینگ
+      // تضمین بسته شدن بارگذاری
       progressEl.style.display = 'none';
     }
   }
@@ -726,4 +727,4 @@
         ${rows}
       </table>
       <div class="footer">سامانه هوشمند پیش‌بینی و پهنه‌بندی حریق استان فارس — FARS-FIRIS</div>
-      <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; backgrou
+      <br><div style="text-align:center;"><button onclick="window.print()" style="font-family:'Vazirmatn'; padding:10px 25px; background:#b91c1c; colo
