@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه هوشمند پایش و پهنه‌بندی خطر حریق (FWI) استان فارس</title>
+    <title>سامانه پایش و پهنه‌بندی خطر حریق (FWI) استان فارس</title>
 
     <!-- Leaflet & Turf.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,7 +15,7 @@
 
     <style>
         * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
-        body { background-color: #f1f5f9; color: #1e293b; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
         header {
             background: #ffffff;
@@ -24,7 +24,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.04);
             z-index: 1000;
         }
         .header-title h1 { font-size: 1.1rem; color: #c2410c; }
@@ -37,12 +37,12 @@
             border-radius: 20px;
             font-weight: bold;
             font-size: 0.85rem;
-            box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+            box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
         }
 
         #map { flex: 1; height: 100%; width: 100%; background: #e2e8f0; }
 
-        /* راهنمای نقشه روشن */
+        /* راهنمای نقشه */
         .legend {
             position: absolute;
             bottom: 25px;
@@ -60,12 +60,12 @@
         .legend-title { font-weight: bold; margin-bottom: 5px; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
         .dot { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-left: 6px; vertical-align: middle; }
 
-        /* پاپ‌آپ شیک با حالت روز */
+        /* پاپ‌آپ */
         .leaflet-popup-content-wrapper {
             background: #ffffff;
             color: #0f172a;
             border-radius: 10px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
             padding: 4px;
             direction: rtl;
         }
@@ -110,7 +110,7 @@
     <header>
         <div class="header-title">
             <h1>سامانه پایش آنلاین حریق و شاخص FWI استان فارس</h1>
-            <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و شهرستان‌ها</p>
+            <p>تحلیل هواشناسی اختصاصی مناطق چهارگانه، شکارممنوع و تقسیمات استانی</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -139,17 +139,24 @@
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. نقشه پایه روان و پرسرعت (حالت روز و بدون خطا)
+        // ۲. نقشه پایه
         const map = L.map('map', { minZoom: 6, maxZoom: 18 }).setView([29.2, 53.1], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // ۳. لایه‌ها
-        const protectedLayer = L.layerGroup().addTo(map); // مناطق چهارگانه
-        const huntingLayer = L.layerGroup().addTo(map);   // مناطق شکارممنوع
-        const districtsLayer = L.layerGroup();            // شهرستان‌ها (اختیاری)
-        const gridLayer = L.layerGroup().addTo(map);      // پهنه‌بندی شبکه‌ای استان
+        // ۳. ایجاد لایه‌های ارتفاعی (Panes) برای تضمین قرارگیری همیشگی مرزها روی داده‌ها
+        map.createPane('gridPane');     // لایه زیرین: داده‌های هواشناسی و شبکه‌ها
+        map.getPane('gridPane').style.zIndex = 400;
+
+        map.createPane('boundariesPane'); // لایه روئین: خطوط مرزی و مناطق
+        map.getPane('boundariesPane').style.zIndex = 500;
+
+        // ۴. گروه‌های لایه
+        const gridLayer = L.layerGroup().addTo(map);       // لایه شبکه‌ها (پایین)
+        const protectedLayer = L.layerGroup().addTo(map);  // لایه مناطق چهارگانه (بالا)
+        const huntingLayer = L.layerGroup().addTo(map);    // لایه مناطق شکارممنوع (بالا)
+        const districtsLayer = L.layerGroup();             // لایه شهرستان‌ها (بالا)
 
         const overlays = {
             "🟢 مناطق حفاظت‌شده و چهارگانه": protectedLayer,
@@ -159,7 +166,7 @@
         };
         L.control.layers(null, overlays, { position: 'topleft', collapsed: false }).addTo(map);
 
-        // تابع رتبه‌بندی و درصد ریسک
+        // تابع رتبه‌بندی شاخص خطر حریق
         function getFWIDetails(fwi) {
             let riskPercent, level, color;
             if (fwi < 5) {
@@ -186,9 +193,11 @@
             return { riskPercent, level, color };
         }
 
-        // ایجاد پاپ‌آپ هنگام کلیک روی هر منطقه
+        // پاپ‌آپ هواشناسی اختصاصی هنگام کلیک روی هر منطقه
         function createFeaturePopup(layer, title, typeTitle, centerCoord) {
             layer.on('click', async function(e) {
+                L.DomEvent.stopPropagation(e); // جلوگیری از انتقال کلیک به سلول زیرین
+
                 const lat = centerCoord[1].toFixed(4);
                 const lon = centerCoord[0].toFixed(4);
 
@@ -219,34 +228,40 @@
                         </div>
                         <div class="stat-row">
                             <span class="stat-label">🔥 شاخص خطر حریق (FWI):</span>
-                            <span class="stat-val" style="color:${info.color}; font-size:1.05rem;">${fwi.toFixed(1)}</span>
+                            <span class="stat-val"[1].toFixed(4);
+                const lon = centerCoord[0].toFixed(4);
+
+                const loadingPopup = L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(`<div style="text-align:center; padding:10px;">در حال استعلام وضعیت هواشناسی <b>${title}</b>...</div>`)
+                    .openOn(map);
+
+                try {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    const temp = data.daily.temperature_2m_max[1] ?? 0;
+                    const rh   = data.daily.relative_humidity_2m_mean[1] ?? 0;
+                    const wind = data.daily.wind_speed_10m_max[1] ?? 0;
+                    const rain = data.daily.precipitation_sum[1] ?? 0;
+
+                    let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
+                    if (fwi < 0) fwi = 0;
+
+                    const info = getFWIDetails(fwi);
+
+                    const html = `
+                        <div class="popup-header">
+                            ${title}
+                            <span class="popup-badge" style="background:${info.color};">${typeTitle}</span>
                         </div>
                         <div class="stat-row">
-                            <span class="stat-label">📊 درصد احتمال وقوع خطر:</span>
-                            <span class="stat-val" style="color:${info.color};">${info.riskPercent}٪ (${info.level})</span>
-                        </div>
-                        <hr style="border-top:1px dashed #cbd5e1; margin:6px 0;">
-                        <div class="stat-row"><span class="stat-label">🌡️ بیشینه دمای هوا:</span><span class="stat-val">${temp} °C</span></div>
-                        <div class="stat-row"><span class="stat-label">💧 میانگین رطوبت نسبی:</span><span class="stat-val">${rh}%</span></div>
-                        <div class="stat-row"><span class="stat-label">💨 حداکثر سرعت باد:</span><span class="stat-val">${wind} km/h</span></div>
-                        <div class="stat-row"><span class="stat-label">🌧️ مجموع پیش‌بینی بارش:</span><span class="stat-val">${rain} mm</span></div>
-                        <div style="margin-top:6px; font-size:0.75rem; color:#94a3b8; text-align:left;">مختصات: ${lat}, ${lon}</div>
-                    `;
-                    loadingPopup.setContent(html);
-                } catch (err) {
-                    loadingPopup.setContent(`<div style="color:red;">خطا در دریافت هواشناسی این نقطه</div>`);
-                }
-            });
-        }
-
-        async function init() {
-            const progressEl = document.getElementById('loading-progress');
-
-            try {
-                // ۱. بارگذاری مناطق چهارگانه
-                fetch('protected_areas.geojson').then(r => r.json()).then(data => {
+                            <span class="stat-label">🔥 شاخص خطر حریق (FWI):</span>
+                            <span class="stat-val".json()).then(data => {
                     L.geoJSON(data, {
-                        style: { color: '#15803d', weight: 2.2, fillColor: '#22c55e', fillOpacity: 0.35 },
+                        pane: 'boundariesPane',
+                        style: { color: '#14532d', weight: 2.8, fillColor: '#22c55e', fillOpacity: 0.35 },
                         onEachFeature: (feature, layer) => {
                             const name = feature.properties?.Name || 'منطقه چهارگانه';
                             const center = turf.center(feature).geometry.coordinates;
@@ -256,10 +271,11 @@
                     }).addTo(protectedLayer);
                 }).catch(e => console.warn(e));
 
-                // ۲. بارگذاری مناطق شکارممنوع
+                // ۲. بارگذاری مناطق شکارممنوع (روی لایه boundariesPane)
                 fetch('hunting_banned.geojson').then(r => r.json()).then(data => {
                     L.geoJSON(data, {
-                        style: { color: '#7e22ce', weight: 2.2, fillColor: '#a855f7', fillOpacity: 0.35 },
+                        pane: 'boundariesPane',
+                        style: { color: '#581c87', weight: 2.8, fillColor: '#a855f7', fillOpacity: 0.35 },
                         onEachFeature: (feature, layer) => {
                             const name = feature.properties?.Name || 'منطقه شکارممنوع';
                             const center = turf.center(feature).geometry.coordinates;
@@ -269,10 +285,11 @@
                     }).addTo(huntingLayer);
                 }).catch(e => console.warn(e));
 
-                // ۳. بارگذاری شهرستان‌ها
+                // ۳. بارگذاری مرز شهرستان‌ها (روی لایه boundariesPane)
                 fetch('fars_districts.geojson').then(r => r.json()).then(data => {
                     L.geoJSON(data, {
-                        style: { color: '#0369a1', weight: 1.2, fillColor: '#38bdf8', fillOpacity: 0.12, dashArray: '3, 3' },
+                        pane: 'boundariesPane',
+                        style: { color: '#0369a1', weight: 1.5, fill: false, dashArray: '4, 4' },
                         onEachFeature: (feature, layer) => {
                             const name = feature.properties?.Name_sh || feature.properties?.مرکز || 'شهرستان';
                             const center = turf.center(feature).geometry.coordinates;
@@ -281,7 +298,7 @@
                     }).addTo(districtsLayer);
                 }).catch(e => console.warn(e));
 
-                // ۴. ساخت شبکه پهنه‌بندی کل استان (با گام ۰.۱۸)
+                // ۴. ساخت شبکه پهنه‌بندی با گام ۰.۱۸ و اختصاص به لایه زیرین (gridPane)
                 let boundaryData;
                 try {
                     const r = await fetch('fars.geojson');
@@ -318,7 +335,7 @@
                     return boundaryFeatures.some(f => turf.booleanIntersects(poly, f));
                 });
 
-                // دریافت داده‌های پهنه به صورت دسته‌ای
+                // استعلام دسته‌ای هواشناسی
                 const batchSize = 40;
                 for (let i = 0; i < activeCells.length; i += batchSize) {
                     const batch = activeCells.slice(i, i + batchSize);
@@ -347,9 +364,11 @@
 
                                 const info = getFWIDetails(fwi);
 
+                                // تعریف در pane زیرین (gridPane) تا هرگز روی مرزها نیفتد
                                 const rect = L.rectangle(cell.bounds, {
+                                    pane: 'gridPane',
                                     color: '#94a3b8',
-                                    weight: 0.4,
+                                    weight: 0.3,
                                     fillColor: info.color,
                                     fillOpacity: 0.55
                                 }).addTo(gridLayer);
